@@ -7,3 +7,6 @@
 [submodule "libs/CrowCpp"]
 	path = libs/CrowCpp
 	url = https://github.com/CrowCpp/Crow.git
+[submodule "libs/magic_enum"]
+	path = libs/magic_enum
+	url = https://github.com/Neargye/magic_enum.git

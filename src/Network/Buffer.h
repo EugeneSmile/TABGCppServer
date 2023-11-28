@@ -21,6 +21,8 @@ public:
     Buffer(uint8_t *data, size_t size);
     Buffer(size_t size = 256);
     ~Buffer();
+    void moveForward(size_t bytes);
+    void moveBackward(size_t bytes);
     void finish(uint8_t byte = uint8_t(0));
     size_t getSize();
     ClientEventCode getClientEventCode();

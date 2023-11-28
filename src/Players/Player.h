@@ -17,7 +17,7 @@ struct Player
     bool is_in_car{false};
     uint32_t in_car_id{0};
     uint32_t in_car_seat{0};
-    Player(uint8_t group, std::string name);
+    Player(const LoginData &data);
 };
 
 #endif

@@ -31,7 +31,7 @@ configure_file(
 set(${PROJECT_NAME}_SOURCES "main.cpp")
 set(${PROJECT_NAME}_INCLUDES "Helpers/Version.h")
 set(${PROJECT_NAME}_INCLUDE_DIRS "")
-set(${PROJECT_NAME}_DEPENDENCIES spdlog toml11 enet Crow::Crow)
+set(${PROJECT_NAME}_DEPENDENCIES spdlog toml11 enet Crow::Crow magic_enum)
 
 set(SUBDIRS_LIST "")
 SubDirList(${CMAKE_CURRENT_LIST_DIR} SUBDIRS_LIST)

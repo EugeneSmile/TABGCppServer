@@ -1,8 +1,9 @@
 #include "Network.h"
 
-#include "Server.h"
-
 #include <string>
+#include <arpa/inet.h>
+
+#include "Server.h"
 
 Network::Network()
 {
@@ -65,12 +66,17 @@ void Network::process()
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_CONNECT:
+            Logger::log->debug("Peer connected with connect id {}, IP: {}", event->peer->connectID, inet_ntoa(event->peer->address.ipv4.ip));
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_DISCONNECT:
+            Logger::log->debug("Peer disconnected with connect id {}, IP: {}", event->peer->connectID, inet_ntoa(event->peer->address.ipv4.ip));
+            server->players->removePlayer(event->peer->connectID);
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
+            Logger::log->debug("Peer disconnected by timeout connect id {}, IP: {}", event->peer->connectID, inet_ntoa(event->peer->address.ipv4.ip));
+            server->players->removePlayer(event->peer->connectID);
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_RECEIVE:

@@ -14,6 +14,15 @@ Buffer::~Buffer()
         delete[] data;
 }
 
+void Buffer::moveForward(size_t bytes)
+{
+    pos += bytes;
+}
+void Buffer::moveBackward(size_t bytes)
+{
+    pos -= bytes;
+}
+
 void Buffer::finish(uint8_t byte)
 {
     memset(pos, byte, data + size - pos);

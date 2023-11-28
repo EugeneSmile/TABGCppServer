@@ -1,6 +1,12 @@
 #ifndef SERVER_TYPES_H_GUARD
 #define SERVER_TYPES_H_GUARD
 
+#define MAGIC_ENUM_RANGE_MIN 0
+#define MAGIC_ENUM_RANGE_MAX 256
+
+#include <string>
+#include <cstdint>
+
 enum ClientEventCode
 {
     NoCodeSet,
@@ -169,6 +175,16 @@ struct Vector3f
     float x;
     float y;
     float z;
+};
+
+struct LoginData
+{
+    std::string player_name;
+    std::string gravestone_text;
+    uint64_t login_key;
+    bool squad_host;
+    uint8_t squad_members;
+    uint32_t gear_length;
 };
 
 #endif
