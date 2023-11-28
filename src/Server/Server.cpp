@@ -2,14 +2,10 @@
 
 std::shared_ptr<Server> Server::create()
 {
-    std::shared_ptr<Server> server = std::shared_ptr<Server>(new Server(), deleter);
+    std::shared_ptr<Server> server = std::make_shared<Server>();
     ServerPtr::init(server->getPointer());
     server->init();
     return server;
-}
-
-void Server::deleter(Server *server)
-{
 }
 
 std::shared_ptr<Server> Server::getPointer()
@@ -40,10 +36,6 @@ void Server::stop()
 }
 
 void Server::restart()
-{
-}
-
-void Server::destroy()
 {
 }
 

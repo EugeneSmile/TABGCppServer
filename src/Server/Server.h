@@ -33,13 +33,11 @@ public:
 
     Server() = default;
     [[nodiscard]] static std::shared_ptr<Server> create();
-    static void deleter(Server *server);
     std::shared_ptr<Server> getPointer();
     void init();
     void start(std::shared_ptr<bool> active);
     void stop();
     void restart();
-    void destroy();
 };
 
 #endif

@@ -47,8 +47,17 @@ Network::~Network()
 
 void Network::process()
 {
-    while (enet_host_service(host, event, 15) > 0)
+    bool polled = false;
+
+    while (!polled)
     {
+        if (enet_host_check_events(host, event) <= 0)
+        {
+            if (enet_host_service(host, event, 15) <= 0)
+                break;
+
+            polled = true;
+        }
         switch (event->type)
         {
         default:

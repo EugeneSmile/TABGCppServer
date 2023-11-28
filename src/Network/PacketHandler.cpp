@@ -9,7 +9,7 @@ void PacketHandler::sendMessageToPeer(ENetEvent *event, ClientEventCode code, Bu
     buffer.setClientEventCode(code);
     ENetPacket *packet = enet_packet_create(buffer, buffer.getSize(), (reliable ? ENetPacketFlag::ENET_PACKET_FLAG_RELIABLE : 0));
     enet_peer_send(event->peer, event->channelID, packet);
-    //    enet_packet_destroy(packet);
+    enet_packet_dispose(packet);
 }
 
 void PacketHandler::handle(ENetEvent *event)
@@ -25,7 +25,7 @@ void PacketHandler::handle(ENetEvent *event)
     {
         uint8_t player_id = server->players->getPlayersCount();
 
-        Buffer reply_room_init = Buffer(7 + server->preferences->name.size() + 4);
+        Buffer reply_room_init = Buffer(8 + server->preferences->name.size() + 4);
 
         reply_room_init.write(static_cast<uint8_t>(ServerResponse::Accepted));
         reply_room_init.write(static_cast<uint8_t>(GameMode::BattleRoyale));
@@ -45,7 +45,9 @@ void PacketHandler::handle(ENetEvent *event)
         const uint8_t squad_members = request.read<uint8_t>();
         const uint32_t gear_length = request.read<uint32_t>();
 
-        server->players->addPlayer({0, player_name});
+        Logger::log->debug("Connection of player '{}', login key '{}'", player_name, login_key);
+
+        server->players->addPlayer(login_key, {0, player_name});
         Player &player = server->players->getPlayer(player_id);
 
         Buffer reply_login = Buffer(4096);
@@ -163,8 +165,6 @@ void PacketHandler::handle(ENetEvent *event)
         reply_login.write(bool(false));
         // (?) color
         reply_login.write(uint32_t(0));
-
-        reply_login.finish();
 
         sendMessageToPeer(event, ClientEventCode::Login, reply_login, true);
     }

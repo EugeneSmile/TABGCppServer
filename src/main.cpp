@@ -27,6 +27,8 @@ int main(int, char **)
 
     server->start(active);
 
+    //   server->deinit();
+
     Config::deinit();
     Logger::log->info("We have stopped. Bye!");
 }

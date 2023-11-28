@@ -1,19 +1,17 @@
 #include "Buffer.h"
 
-Buffer::Buffer(uint8_t *data, size_t size) : size(size), data(data), pos(data + 1)
+Buffer::Buffer(uint8_t *data, size_t size) : mem_to_delete(false), size(size), data(data), pos(data + 1)
 {
-    mem_to_delete = false;
 }
 
-Buffer::Buffer(size_t size) : size(size), data(new uint8_t[size]), pos(data + 1)
+Buffer::Buffer(size_t size) : mem_to_delete(true), size(size), data(new uint8_t[size]()), pos(data + 1)
 {
-    mem_to_delete = true;
 }
 
 Buffer::~Buffer()
 {
     if (mem_to_delete)
-        delete data;
+        delete[] data;
 }
 
 void Buffer::finish(uint8_t byte)
