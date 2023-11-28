@@ -6,11 +6,14 @@
 #include <thread>
 
 #include "Logger.h"
+#include "Config.h"
 #include "ServerPtr.h"
-#include "Preferences.h"
 #include "Players.h"
 #include "Weapons.h"
+#include "Cars.h"
 #include "Network.h"
+#include "Preferences.h"
+#include "Game.h"
 
 constexpr std::chrono::nanoseconds tick_time = std::chrono::nanoseconds(16666667);
 
@@ -22,9 +25,11 @@ private:
 
 public:
     std::shared_ptr<Preferences> preferences;
+    std::shared_ptr<Game> game;
     std::shared_ptr<Network> network;
     std::shared_ptr<Players> players;
     std::shared_ptr<Weapons> weapons;
+    std::shared_ptr<Cars> cars;
 
     Server() = default;
     [[nodiscard]] static std::shared_ptr<Server> create();

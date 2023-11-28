@@ -2,19 +2,28 @@
 
 void Players::addPlayer(const Player &player)
 {
-    players.try_emplace(player.id, player);
+    players.push_back(player);
 }
-void Players::removePlayer(const Player &player)
+void Players::removePlayer(const size_t id)
 {
-    players.erase(player.id);
+    players.erase(std::next(players.begin(), id));
 }
-void Players::updatePlayerLocation(uint8_t player_id, Vector3f new_location)
+void Players::updatePlayerLocation(uint8_t id, Vector3f new_location)
 {
-    if (players.contains(player_id))
-        players.at(player_id).location = new_location;
+    players.at(id).location = new_location;
 }
 
-uint8_t Players::increaseLastId()
+Player &Players::getPlayer(const size_t id)
 {
-    return ++last_id;
+    return players.at(id);
+}
+
+uint8_t Players::getNextFreeID()
+{
+    return players.size() + 1;
+}
+
+uint8_t Players::getPlayersCount()
+{
+    return players.size();
 }

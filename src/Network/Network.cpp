@@ -2,6 +2,8 @@
 
 #include "Server.h"
 
+#include <string>
+
 Network::Network()
 {
     if (enet_initialize())
@@ -11,7 +13,11 @@ Network::Network()
         return;
     }
 
-    if (enet_address_set_hostname(address, "127.0.0.1"))
+    server_channels = Config::getValue("channels", 256, "Server");
+    server_address = Config::getValue("address", "0.0.0.0", "Server");
+    server_port = Config::getValue("port", 9700, "Server");
+
+    if (enet_address_set_hostname(address, server_address.c_str()))
     {
         Logger::log->info("Unable to map address, exiting");
         server->stop();
@@ -19,7 +25,12 @@ Network::Network()
     }
     address->port = server_port;
 
-    host = enet_host_create(address, server_max_players, 0, 0, 0, 0);
+    host = enet_host_create(address, server_channels, 0, 0, 0, 0);
+
+    Logger::log->info("Server is listening on {}:{} with {} channels", server_address, server_port, server_channels);
+
+    if (Config::getValue("enabled", true, "Interface"))
+        interface = std::make_shared<Interface>();
 }
 
 Network::~Network()
@@ -31,6 +42,7 @@ Network::~Network()
     delete address;
 
     enet_deinitialize();
+    Logger::log->info("Server stopped listening");
 }
 
 void Network::process()
@@ -44,19 +56,15 @@ void Network::process()
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_CONNECT:
-            Logger::log->info("Client connected - ID: {}, IP: {}", event->peer->incomingPeerID, event->peer->incomingPeerID);
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_DISCONNECT:
-            Logger::log->info("Client disconnected - ID: {}, IP: {}", event->peer->incomingPeerID, event->peer->incomingPeerID);
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
-            Logger::log->info("Client disconnected by timeout - ID: {}, IP: {}", event->peer->incomingPeerID, event->peer->incomingPeerID);
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_RECEIVE:
-            Logger::log->info("Packed received - ID: {}, IP: {}", event->peer->incomingPeerID, event->peer->incomingPeerID);
             packet_handler.handle(event);
             break;
         }

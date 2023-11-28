@@ -1,133 +1,176 @@
 #include "PacketHandler.h"
 
 #include "Server.h"
-#include "CharHelper.h"
+#include "GeneralHelper.h"
+#include "Buffer.h"
 
-void PacketHandler::sendMessageToPeer(ENetEvent *event, ClientEventCode code, const std::vector<uint8_t> &data, bool reliable)
+void PacketHandler::sendMessageToPeer(ENetEvent *event, ClientEventCode code, Buffer &buffer, bool reliable)
 {
-    std::vector<uint8_t> payload;
-    payload.push_back(static_cast<uint8_t>(code));
-    payload.insert(payload.end(), data.begin(), data.end());
-    ENetPacket *packet = enet_packet_create(payload.data(), payload.size(), (reliable ? ENetPacketFlag::ENET_PACKET_FLAG_RELIABLE : 0));
+    buffer.setClientEventCode(code);
+    ENetPacket *packet = enet_packet_create(buffer, buffer.getSize(), (reliable ? ENetPacketFlag::ENET_PACKET_FLAG_RELIABLE : 0));
     enet_peer_send(event->peer, event->channelID, packet);
     //    enet_packet_destroy(packet);
 }
 
 void PacketHandler::handle(ENetEvent *event)
 {
-    ClientEventCode code = static_cast<ClientEventCode>(event->packet->data[0]);
+    Buffer request = Buffer(event->packet->data, event->packet->dataLength);
+    ClientEventCode code = request.getClientEventCode();
     if ((code != ClientEventCode::TABGPing) && (code != ClientEventCode::PlayerUpdate))
-        std::cout << "Handling packet: " << static_cast<uint32_t>(code) << std::endl;
+        Logger::log->debug("Handling packet with ClientEventCode {}", static_cast<uint32_t>(code));
 
     switch (code)
     {
     case ClientEventCode::RoomInit:
     {
-        const std::string room_name = "TABGCppServer";
-        uint8_t new_index = server->players->increaseLastId();
+        uint8_t player_id = server->players->getPlayersCount();
 
-        std::vector<uint8_t> data; //(size_t(28) + room_name.size());
+        Buffer reply_room_init = Buffer(7 + server->preferences->name.size() + 4);
 
-        pushAsChars(data, static_cast<int32_t>(ServerResponse::Accepted));
-        pushAsChars(data, static_cast<int32_t>(GameMode::BattleRoyale));
-        pushAsChars(data, uint32_t(1));
-        pushAsChars(data, uint32_t(new_index));
-        pushAsChars(data, uint32_t(0));
-        pushAsChars(data, uint32_t(1));
-        data.insert(data.end(), {'C', 'u', 's', 't', 'o', 'm', 'S', 'e', 'r', 'v', 'e', 'r', '\0'});
-        pushAsChars(data, uint32_t(0));
+        reply_room_init.write(static_cast<uint8_t>(ServerResponse::Accepted));
+        reply_room_init.write(static_cast<uint8_t>(GameMode::BattleRoyale));
+        reply_room_init.write(uint8_t(0));
+        reply_room_init.write(uint8_t(player_id));
+        reply_room_init.write(uint8_t(0));
+        reply_room_init.write(uint8_t(0));
+        reply_room_init.write<std::string>(server->preferences->name);
+        reply_room_init.write(uint8_t(0));
 
-        sendMessageToPeer(event, ClientEventCode::RoomInitRequestResponse, data, true);
-        std::vector<uint8_t> join_message_data;
-        createJoinMessage(join_message_data, new_index, "TestPlayer");
-        sendMessageToPeer(event, ClientEventCode::Login, join_message_data, true);
+        sendMessageToPeer(event, ClientEventCode::RoomInitRequestResponse, reply_room_init, true);
+
+        const std::string player_name = request.read<std::string>();
+        const std::string gravestone_text = request.read<std::string>();
+        const uint64_t login_key = request.read<uint64_t>();
+        const bool squad_host = request.read<bool>();
+        const uint8_t squad_members = request.read<uint8_t>();
+        const uint32_t gear_length = request.read<uint32_t>();
+
+        server->players->addPlayer({0, player_name});
+        Player &player = server->players->getPlayer(player_id);
+
+        Buffer reply_login = Buffer(4096);
+
+        reply_login.write(player_id);
+        reply_login.write(uint8_t(0));
+        reply_login.write<std::string>(player_name);
+        reply_login.write(bool(true));
+        reply_login.write(player.location.x);
+        reply_login.write(player.location.y);
+        reply_login.write(player.location.z);
+        reply_login.write(player.rotation.y);
+        reply_login.write(bool(false));
+        reply_login.write(bool(false));
+        reply_login.write(player.health);
+        reply_login.write(player.is_in_car);
+        if (player.is_in_car)
+        {
+            reply_login.write(player.in_car_id);
+            reply_login.write(player.in_car_seat);
+        }
+        reply_login.write(server->players->getPlayersCount());
+        for (uint8_t i = 0; i < server->players->getPlayersCount(); ++i)
+        {
+            player = server->players->getPlayer(i);
+            reply_login.write(i);
+            reply_login.write(player.group);
+            reply_login.write<std::string>(player.name);
+            // weapon (?)
+            reply_login.write(uint32_t(0));
+            // array size (?)
+            reply_login.write(uint32_t(0));
+            // for array
+            // reply_login.write(uint32_t(i));
+            reply_login.write(player.dev);
+            // color
+            reply_login.write(uint32_t(0));
+        }
+
+        // Weapons
+        reply_login.write(server->weapons->getNumberOfWeapons());
+        for (uint32_t i = 0; i < server->weapons->getNumberOfWeapons(); ++i)
+        {
+            Weapon &weapon = server->weapons->getWeapon(i);
+            reply_login.write(i);
+            // uniqueIdentifier (?) - uint32
+            reply_login.write(weapon.type);
+            // quantity (?) - uint32
+            reply_login.write(weapon.count);
+            // spawn
+            reply_login.write(weapon.location.x);
+            reply_login.write(weapon.location.y);
+            reply_login.write(weapon.location.z);
+        }
+
+        // Cars
+        reply_login.write(server->cars->getNumberOfCars());
+        for (uint32_t i = 0; i < server->cars->getNumberOfCars(); ++i)
+        {
+            Car &car = server->cars->getCar(i);
+            reply_login.write(i);
+            // Currently unknown (?)
+            reply_login.write(car.i2);
+            reply_login.write(car.seats);
+            for (uint32_t j = 0; j < car.seats; ++j)
+                reply_login.write(j);
+            reply_login.write(uint8_t(car.parts.size()));
+            for (uint8_t j = 0; j < car.parts.size(); ++j)
+            {
+                reply_login.write(j);
+                reply_login.write(car.parts[j].health);
+                reply_login.write<std::string>(car.parts[j].name);
+            }
+        }
+
+        // time of day
+        reply_login.write(float(0));
+        // seconds to first ring
+        reply_login.write(float(1000));
+        // base ring time
+        reply_login.write(float(1000));
+
+        // (?) need to clarify
+        uint8_t some_index = 0;
+        reply_login.write(some_index);
+        for (size_t i = 0; i < some_index; ++i)
+        {
+            reply_login.write(float(10));
+            reply_login.write(float(20));
+        }
+
+        reply_login.write(server->preferences->lives);
+        reply_login.write(server->preferences->kills);
+        // Need to implement game state
+        GameState state = server->game->getState();
+        reply_login.write(static_cast<uint8_t>(state));
+        if (state == GameState::CountDown)
+            reply_login.write(server->game->getCountdownCounter());
+        if (state == GameState::Flying || state == GameState::Started)
+        {
+            // (?) not clear boolean
+            reply_login.write(bool(true));
+            reply_login.write(server->game->getBus().start.x);
+            reply_login.write(server->game->getBus().start.y);
+            reply_login.write(server->game->getBus().start.z);
+            reply_login.write(server->game->getBus().finish.x);
+            reply_login.write(server->game->getBus().finish.y);
+            reply_login.write(server->game->getBus().finish.z);
+        }
+
+        // (?) size of some array of uint32
+        reply_login.write(uint32_t(0));
+        // for (array)
+        // (?) some bool
+        reply_login.write(bool(false));
+        // (?) color
+        reply_login.write(uint32_t(0));
+
+        reply_login.finish();
+
+        sendMessageToPeer(event, ClientEventCode::Login, reply_login, true);
     }
     break;
 
     default:
         break;
     }
-}
-
-void PacketHandler::createJoinMessage(std::vector<uint8_t> &data, uint8_t player_index, const std::string &player_name)
-{
-    // player index
-    data.push_back(player_index);
-    // group index
-    data.push_back(char(0));
-    // username length
-    pushAsChars(data, player_name.size());
-    // username
-    data.insert(data.end(), player_name.begin(), player_name.end());
-    // is dev
-    pushAsChars(data, uint32_t(1));
-
-    // set up locations properly
-    server->players->addPlayer({player_index, 0, player_name});
-    server->players->updatePlayerLocation(player_index, {0, 200, 0});
-
-    // x
-    pushAsChars(data, float(0));
-    // y
-    pushAsChars(data, float(200));
-    // z
-    pushAsChars(data, float(0));
-    // rotation
-    pushAsChars(data, float(0));
-    // is dead
-    pushAsChars(data, uint32_t(0));
-    // should update health value
-    pushAsChars(data, uint32_t(0));
-    // health value (not needed)
-    pushAsChars(data, float(100));
-    // something relating to cars? not needed
-    pushAsChars(data, uint32_t(0));
-    // how many players are in the lobby?
-    pushAsChars(data, uint32_t(1));
-
-    // --- OTHER PLAYERS ---
-
-    // player index
-    pushAsChars(data, uint32_t(1));
-    // group index
-    pushAsChars(data, uint32_t(1));
-    // username length
-    pushAsChars(data, player_name.size());
-    // username
-    data.insert(data.end(), player_name.begin(), player_name.end());
-    // gun
-    pushAsChars(data, int32_t(315));
-    // gear data (?)
-    pushAsChars(data, int32_t(0));
-    // is dev
-    data.push_back(1);
-    // colour (?)
-    pushAsChars(data, int32_t(0));
-
-    // --- END OTHER PLAYERS ---
-
-    // --- WEAPONS SECTION ---
-    // number of weapons to spawn, just leave this empty...
-    pushAsChars(data, int32_t(0));
-    // --- END WEAPONS SECTION ---
-
-    // --- CARS SECTION ---
-    // number of cars to spawn, just leave this empty...
-    pushAsChars(data, int32_t(0));
-    // --- END CARS SECTION ---
-
-    // time of day
-    pushAsChars(data, float(0));
-    // seconds before first ring
-    pushAsChars(data, int32_t(1000));
-    // base ring time
-    pushAsChars(data, int32_t(1000));
-    // something ring-related, just set to false to disable
-    data.push_back(0);
-    // lives
-    pushAsChars(data, int32_t(2));
-    // kills to win
-    pushAsChars(data, uint16_t(10));
-    // gamestate
-    data.push_back(static_cast<uint8_t>(GameState::WaitingForPlayers));
 }

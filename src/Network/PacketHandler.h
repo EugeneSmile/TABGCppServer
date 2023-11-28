@@ -10,11 +10,11 @@
 #include "ServerPtr.h"
 #include "Types.h"
 
+class Buffer;
 class PacketHandler : public ServerPtr
 {
 private:
-    void createJoinMessage(std::vector<uint8_t> &data, uint8_t player_index, const std::string &player_name);
-    void sendMessageToPeer(ENetEvent *event, ClientEventCode code, const std::vector<uint8_t> &data, bool reliable);
+    void sendMessageToPeer(ENetEvent *event, ClientEventCode code, Buffer &buffer, bool reliable);
 
 public:
     void handle(ENetEvent *event);

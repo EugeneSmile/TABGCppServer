@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "Logger.h"
+#include "Config.h"
 #include "Server.h"
 #include "Version.h"
 
@@ -18,6 +19,7 @@ void signal_handler(int signal)
 int main(int, char **)
 {
     Logger::init();
+    Config::init();
     signal(SIGINT, signal_handler);
     Logger::log->info("Starting {} version {}", std::string(PROJECT_NAME), std::string(VERSION_FULL));
 
@@ -25,5 +27,6 @@ int main(int, char **)
 
     server->start(active);
 
-    Logger::log->info("We are stopped. Bye!");
+    Config::deinit();
+    Logger::log->info("We have stopped. Bye!");
 }

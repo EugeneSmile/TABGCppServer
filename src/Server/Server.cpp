@@ -19,10 +19,14 @@ std::shared_ptr<Server> Server::getPointer()
 
 void Server::init()
 {
-    preferences = std::make_unique<Preferences>();
-    network = std::make_unique<Network>();
-    players = std::make_unique<Players>();
-    weapons = std::make_unique<Weapons>();
+    preferences = std::make_shared<Preferences>();
+    network = std::make_shared<Network>();
+    game = std::make_shared<Game>();
+    players = std::make_shared<Players>();
+    weapons = std::make_shared<Weapons>();
+    cars = std::make_shared<Cars>();
+
+    Logger::log->set_level(static_cast<spdlog::level::level_enum>(Config::getValue("level", 2, "Log")));
 }
 
 void Server::start(std::shared_ptr<bool> active)

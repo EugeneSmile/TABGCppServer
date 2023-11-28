@@ -7,11 +7,10 @@
 
 struct Weapon
 {
-    uint32_t id;
     uint32_t type;
     uint32_t count;
     Vector3f location;
-    Weapon(uint32_t id, uint32_t type, uint32_t count, Vector3f location);
+    Weapon(uint32_t type, uint32_t count, Vector3f location);
 };
 
 #endif
