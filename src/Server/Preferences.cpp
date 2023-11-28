@@ -15,6 +15,9 @@ Preferences::Preferences()
     password = Config::getValue("password", "", "Server");
     lives = Config::getValue("lives", 2, "Game");
     kills = Config::getValue("kills", 0, "Game");
+    tick_rate = Config::getValue("tickrate", 200, "Server");
+    tick_time = std::chrono::nanoseconds(int64_t(1e9) / tick_rate);
+    start_time = std::chrono::high_resolution_clock::now();
 
     passworded = !password.empty();
 }

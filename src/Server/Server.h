@@ -15,8 +15,6 @@
 #include "Preferences.h"
 #include "Game.h"
 
-constexpr std::chrono::nanoseconds tick_time = std::chrono::nanoseconds(16666667);
-
 class Server : public std::enable_shared_from_this<Server>
 {
 private:

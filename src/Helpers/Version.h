@@ -3,5 +3,5 @@
 #define PROJECT_VERSION_MINOR 1
 #define PROJECT_VERSION_PATCH 0
 #define VERSION_BRANCH main
-#define VERSION_COMMIT fc8d8ec
-#define VERSION_FULL "0.1.0-main-fc8d8ec"
+#define VERSION_COMMIT 765e826
+#define VERSION_FULL "0.1.0-main-765e826"

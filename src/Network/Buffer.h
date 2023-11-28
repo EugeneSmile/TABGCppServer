@@ -31,7 +31,7 @@ public:
     operator uint8_t *() const { return data; };
 
     template <typename T>
-        requires IsInteger<T> || IsBool<T> || IsFloat<T>
+        requires IsInteger<T> || IsBool<T> || IsFloat<T> || IsVectorStruct<T>
     T read()
     {
         T *ret;
@@ -52,7 +52,7 @@ public:
     }
 
     template <typename T>
-        requires IsInteger<T> || IsBool<T> || IsFloat<T>
+        requires IsInteger<T> || IsBool<T> || IsFloat<T> || IsVectorStruct<T>
     void write(T data)
     {
         memcpy(pos, &data, sizeof(data));

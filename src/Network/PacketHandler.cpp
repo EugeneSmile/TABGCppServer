@@ -1,5 +1,7 @@
 #include "PacketHandler.h"
 
+#include <chrono>
+
 #include <magic_enum.hpp>
 
 #include "Server.h"
@@ -12,13 +14,15 @@ PacketHandler::PacketHandler()
     func_responce[ClientEventCode::PlayerUpdate] = std::bind(&PacketHandler::respPlayerUpdate, this, std::placeholders::_1);
 
     func_request[ClientEventCode::Login] = std::bind(&PacketHandler::reqLogin, this, std::placeholders::_1, std::placeholders::_2);
+    func_request[ClientEventCode::PlayerUpdate] = std::bind(&PacketHandler::reqPlayerUpdate, this, std::placeholders::_1, std::placeholders::_2);
     func_request[ClientEventCode::SpawnGun] = std::bind(&PacketHandler::reqSpawnGun, this, std::placeholders::_1, std::placeholders::_2);
 }
 
 void PacketHandler::callBroadcast(ClientEventCode code, void *ctx)
 {
-    for (auto &player : server->players->players)
-        func_request[code](server->network->peers[player.first.key], ctx);
+    if (func_request.contains(code))
+        for (auto &player : server->players->players)
+            func_request[code](server->network->peers[player.first.key], ctx);
 }
 
 void PacketHandler::sendMessageToPeer(ENetPeer *peer, ClientEventCode code, Buffer &buffer, bool reliable)
@@ -87,9 +91,7 @@ void PacketHandler::reqLogin(ENetPeer *peer, void *ctx)
     reply_login.write(uint8_t(0));
     reply_login.write<std::string>(player.name);
     reply_login.write(bool(true));
-    reply_login.write(player.location.x);
-    reply_login.write(player.location.y);
-    reply_login.write(player.location.z);
+    reply_login.write(player.location);
     reply_login.write(player.rotation.y);
     reply_login.write(bool(false));
     reply_login.write(bool(false));
@@ -129,9 +131,7 @@ void PacketHandler::reqLogin(ENetPeer *peer, void *ctx)
         // quantity (?) - uint32
         reply_login.write(weapon.count);
         // spawn
-        reply_login.write(weapon.location.x);
-        reply_login.write(weapon.location.y);
-        reply_login.write(weapon.location.z);
+        reply_login.write(weapon.location);
     }
 
     // Cars
@@ -181,12 +181,8 @@ void PacketHandler::reqLogin(ENetPeer *peer, void *ctx)
     {
         // (?) not clear boolean
         reply_login.write(bool(true));
-        reply_login.write(server->game->getBus().start.x);
-        reply_login.write(server->game->getBus().start.y);
-        reply_login.write(server->game->getBus().start.z);
-        reply_login.write(server->game->getBus().finish.x);
-        reply_login.write(server->game->getBus().finish.y);
-        reply_login.write(server->game->getBus().finish.z);
+        reply_login.write(server->game->getBus().start);
+        reply_login.write(server->game->getBus().finish);
     }
 
     // (?) size of some array of uint32
@@ -204,17 +200,20 @@ void PacketHandler::respPlayerUpdate(ENetEvent *event)
 {
     Buffer responce = Buffer(event->packet->data, event->packet->dataLength);
     Player &player = server->players->findPlayer(responce.read<uint8_t>())->second;
-    player.location.x = responce.read<float>();
-    player.location.y = responce.read<float>();
-    player.location.z = responce.read<float>();
-    player.rotation.x = responce.read<float>();
-    player.rotation.y = responce.read<float>();
+    player.location = responce.read<Vector3f>();
+    player.rotation = responce.read<Vector2f>();
     responce.read<bool>();
     responce.read<uint8_t>();
     responce.read<uint8_t>();
     responce.read<uint8_t>();
     responce.read<uint8_t>();
     // Logger::log->debug("Player {} moved to ({}, {}, {}) direction ({}, {})", player.name, player.location.x, player.location.y, player.location.z, player.rotation.x, player.rotation.y);
+}
+
+void PacketHandler::reqPlayerUpdate(ENetPeer *peer, void *ctx)
+{
+    Buffer request = Buffer(4096);
+    request.write(std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(std::chrono::high_resolution_clock::now() - server->preferences->start_time).count());
 }
 
 void PacketHandler::reqSpawnGun(ENetPeer *peer, void *ctx)

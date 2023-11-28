@@ -11,6 +11,12 @@ struct Vector3f
     float z;
 };
 
+struct Vector2f
+{
+    float x;
+    float y;
+};
+
 struct LoginData
 {
     std::string player_name;

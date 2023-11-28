@@ -4,6 +4,9 @@
 #include <type_traits>
 #include <cstdint>
 #include <string>
+#include <concepts>
+
+#include "Types.h"
 
 template <typename T, typename... U>
 concept IsAnyOf = (std::same_as<T, U> || ...);
@@ -19,5 +22,8 @@ concept IsString = IsAnyOf<T, std::string, const std::string, char *, const char
 
 template <typename T>
 concept IsBool = IsAnyOf<T, bool>;
+
+template <typename T>
+concept IsVectorStruct = IsAnyOf<T, Vector3f, Vector2f>;
 
 #endif

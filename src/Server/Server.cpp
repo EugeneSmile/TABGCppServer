@@ -48,7 +48,9 @@ void Server::run()
         network->process();
 
         std::chrono::nanoseconds tick_duration = std::chrono::high_resolution_clock::now() - tick_start;
-        if (tick_duration < tick_time)
-            std::this_thread::sleep_for(tick_time - tick_duration);
+        if (tick_duration < preferences->tick_time)
+            std::this_thread::sleep_for(preferences->tick_time - tick_duration);
+        else
+            Logger::log->warn("Tick take too long: tick duration {}ns, limit: {}ns!", tick_duration.count(), preferences->tick_time.count());
     }
 }

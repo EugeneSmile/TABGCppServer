@@ -1,5 +1,6 @@
 #include "Network.h"
 
+#include <chrono>
 #include <string>
 #include <arpa/inet.h>
 
@@ -48,13 +49,15 @@ Network::~Network()
 
 void Network::process()
 {
+    float poll_time_ratio = Config::getValue("poll_time_ratio", 0.2, "Server");
     bool polled = false;
 
     while (!polled)
     {
         if (enet_host_check_events(host, event) <= 0)
         {
-            if (enet_host_service(host, event, 15) <= 0)
+            // Need to REALLY this about threading
+            if (enet_host_service(host, event, std::ceil(poll_time_ratio * 1000 / server->preferences->tick_rate)) <= 0)
                 break;
 
             polled = true;
@@ -80,4 +83,6 @@ void Network::process()
             break;
         }
     }
+
+    packet_handler.callBroadcast(ClientEventCode::PlayerUpdate, nullptr);
 }

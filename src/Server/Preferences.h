@@ -3,6 +3,7 @@
 
 #include <string>
 #include <cstdint>
+#include <chrono>
 
 class Preferences
 {
@@ -17,6 +18,9 @@ public:
     std::string password;
     uint32_t lives;
     uint16_t kills;
+    uint32_t tick_rate;
+    std::chrono::nanoseconds tick_time;
+    std::chrono::high_resolution_clock::time_point start_time;
     bool passworded = false;
     bool accepting_players = true;
 };

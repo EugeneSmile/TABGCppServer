@@ -24,6 +24,7 @@ private:
     void respInitRoom(ENetEvent *event);
     void respPlayerUpdate(ENetEvent *event);
 
+    void reqPlayerUpdate(ENetPeer *peer, void *ctx);
     void reqLogin(ENetPeer *peer, void *ctx);
     void reqSpawnGun(ENetPeer *peer, void *ctx);
 
