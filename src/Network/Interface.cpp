@@ -51,7 +51,7 @@ crow::json::wvalue Interface::getServerList(const crow::request &request)
     crow::json::wvalue ret;
     ret["id"] = server->preferences->id;
     ret["serverName"] = server->preferences->name;
-    ret["playersOnServer"] = server->players->getPlayersCount();
+    ret["playersOnServer"] = server->players->connected.size();
     ret["splotReserved"] = 0;
     ret["maxPlayers"] = server->preferences->max_players;
     ret["acceptingPlayers"] = server->preferences->accepting_players;

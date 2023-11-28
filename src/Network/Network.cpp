@@ -70,13 +70,9 @@ void Network::process()
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_DISCONNECT:
-            Logger::log->debug("Peer disconnected with connect id {}, IP: {}", event->peer->connectID, inet_ntoa(event->peer->address.ipv4.ip));
-            server->players->removePlayer(event->peer->connectID);
-            break;
-
         case ENetEventType::ENET_EVENT_TYPE_DISCONNECT_TIMEOUT:
             Logger::log->debug("Peer disconnected by timeout connect id {}, IP: {}", event->peer->connectID, inet_ntoa(event->peer->address.ipv4.ip));
-            server->players->removePlayer(event->peer->connectID);
+            peers.erase(server->players->removePlayer(event->peer->connectID));
             break;
 
         case ENetEventType::ENET_EVENT_TYPE_RECEIVE:

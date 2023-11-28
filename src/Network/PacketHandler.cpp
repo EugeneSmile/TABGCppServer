@@ -8,15 +8,24 @@
 
 PacketHandler::PacketHandler()
 {
-    functions[ClientEventCode::RoomInit] = std::bind(&PacketHandler::reqInitRoom, this, std::placeholders::_1, std::placeholders::_2);
-    functions[ClientEventCode::PlayerUpdate] = std::bind(&PacketHandler::reqPlayerUpdate, this, std::placeholders::_1, std::placeholders::_2);
+    func_responce[ClientEventCode::RoomInit] = std::bind(&PacketHandler::respInitRoom, this, std::placeholders::_1);
+    func_responce[ClientEventCode::PlayerUpdate] = std::bind(&PacketHandler::respPlayerUpdate, this, std::placeholders::_1);
+
+    func_request[ClientEventCode::Login] = std::bind(&PacketHandler::reqLogin, this, std::placeholders::_1, std::placeholders::_2);
+    func_request[ClientEventCode::SpawnGun] = std::bind(&PacketHandler::reqSpawnGun, this, std::placeholders::_1, std::placeholders::_2);
 }
 
-void PacketHandler::sendMessageToPeer(ENetEvent *event, ClientEventCode code, Buffer &buffer, bool reliable)
+void PacketHandler::callBroadcast(ClientEventCode code, void *ctx)
+{
+    for (auto &player : server->players->players)
+        func_request[code](server->network->peers[player.first.key], ctx);
+}
+
+void PacketHandler::sendMessageToPeer(ENetPeer *peer, ClientEventCode code, Buffer &buffer, bool reliable)
 {
     buffer.setClientEventCode(code);
     ENetPacket *packet = enet_packet_create(buffer, buffer.getSize(), (reliable ? ENetPacketFlag::ENET_PACKET_FLAG_RELIABLE : 0));
-    enet_peer_send(event->peer, event->channelID, packet);
+    enet_peer_send(peer, 0, packet);
     enet_packet_dispose(packet);
 }
 
@@ -26,11 +35,11 @@ void PacketHandler::handle(ENetEvent *event)
     if ((code != ClientEventCode::TABGPing) && (code != ClientEventCode::PlayerUpdate))
         Logger::log->debug("Handling packet with ClientEventCode {}", magic_enum::enum_name(code));
 
-    if (functions.contains(code))
-        functions[code](event, nullptr);
+    if (func_responce.contains(code))
+        func_responce[code](event);
 }
 
-void PacketHandler::reqInitRoom(ENetEvent *event, void *ctx)
+void PacketHandler::respInitRoom(ENetEvent *event)
 {
     Buffer request = Buffer(event->packet->data, event->packet->dataLength);
     LoginData login_data;
@@ -42,8 +51,9 @@ void PacketHandler::reqInitRoom(ENetEvent *event, void *ctx)
     login_data.squad_members = request.read<uint8_t>();
     login_data.gear_length = request.read<uint32_t>();
 
-    server->players->addPlayer(event->peer->connectID, login_data);
-    uint8_t player_game_index = server->players->getGameIndex(login_data.login_key);
+    auto player = server->players->addPlayer(event->peer->connectID, login_data);
+    uint8_t player_game_index = player->first.game_index;
+    server->network->peers.emplace(player->first.key, event->peer);
 
     Buffer reply_room_init = Buffer(8 + server->preferences->name.size() + 4);
 
@@ -56,22 +66,24 @@ void PacketHandler::reqInitRoom(ENetEvent *event, void *ctx)
     reply_room_init.write<std::string>(server->preferences->name);
     reply_room_init.write(uint8_t(0));
 
-    sendMessageToPeer(event, ClientEventCode::RoomInitRequestResponse, reply_room_init, true);
+    sendMessageToPeer(event->peer, ClientEventCode::RoomInitRequestResponse, reply_room_init, true);
 
-    reqLogin(event, &login_data.login_key);
+    Logger::log->debug("Login of player '{}', login key '{}'", player->second.name, player->first.key);
+    callBroadcast(ClientEventCode::Login, static_cast<void *>(&player->first.key));
+
+    callBroadcast(ClientEventCode::SpawnGun, nullptr);
 }
 
-void PacketHandler::reqLogin(ENetEvent *event, void *ctx)
+void PacketHandler::reqLogin(ENetPeer *peer, void *ctx)
 {
-    Buffer request = Buffer(event->packet->data, event->packet->dataLength);
-    uint64_t player_key = *(uint64_t *)ctx;
-    Player &player = server->players->getPlayer(player_key);
-
-    Logger::log->debug("Login of player '{}', login key '{}'", player.name, player_key);
+    uint64_t player_key = *static_cast<uint64_t *>(ctx);
+    auto player_it = server->players->findPlayer(player_key);
+    auto &player_data = player_it->first;
+    auto &player = player_it->second;
 
     Buffer reply_login = Buffer(4096);
 
-    reply_login.write(server->players->getGameIndex(player_key));
+    reply_login.write(player_data.game_index);
     reply_login.write(uint8_t(0));
     reply_login.write<std::string>(player.name);
     reply_login.write(bool(true));
@@ -88,11 +100,11 @@ void PacketHandler::reqLogin(ENetEvent *event, void *ctx)
         reply_login.write(player.in_car_id);
         reply_login.write(player.in_car_seat);
     }
-    reply_login.write(server->players->getPlayersCount());
-    for (uint8_t i = 0; i < server->players->getPlayersCount(); ++i)
+    reply_login.write(static_cast<uint8_t>(server->players->connected.size()));
+    for (const auto &player_pair : server->players->players)
     {
-        player = server->players->getPlayer(i);
-        reply_login.write(i);
+        player = player_pair.second;
+        reply_login.write(player_pair.first.game_index);
         reply_login.write(player.group);
         reply_login.write<std::string>(player.name);
         // weapon (?)
@@ -185,22 +197,33 @@ void PacketHandler::reqLogin(ENetEvent *event, void *ctx)
     // (?) color
     reply_login.write(uint32_t(0));
 
-    sendMessageToPeer(event, ClientEventCode::Login, reply_login, true);
+    sendMessageToPeer(peer, ClientEventCode::Login, reply_login, true);
 }
 
-void PacketHandler::reqPlayerUpdate(ENetEvent *event, void *ctx)
+void PacketHandler::respPlayerUpdate(ENetEvent *event)
 {
-    Buffer request = Buffer(event->packet->data, event->packet->dataLength);
-    Player &player = server->players->getPlayer(request.read<uint8_t>());
-    player.location.x = request.read<float>();
-    player.location.y = request.read<float>();
-    player.location.z = request.read<float>();
-    player.rotation.x = request.read<float>();
-    player.rotation.z = request.read<float>();
-    request.read<bool>();
-    request.read<uint8_t>();
-    request.read<uint8_t>();
-    request.read<uint8_t>();
-    request.read<uint8_t>();
-    Logger::log->debug("Player {} moved to ({}, {}, {}) direction ({}, {})", player.name, player.location.x, player.location.y, player.location.z, player.rotation.x, player.rotation.z);
+    Buffer responce = Buffer(event->packet->data, event->packet->dataLength);
+    Player &player = server->players->findPlayer(responce.read<uint8_t>())->second;
+    player.location.x = responce.read<float>();
+    player.location.y = responce.read<float>();
+    player.location.z = responce.read<float>();
+    player.rotation.x = responce.read<float>();
+    player.rotation.y = responce.read<float>();
+    responce.read<bool>();
+    responce.read<uint8_t>();
+    responce.read<uint8_t>();
+    responce.read<uint8_t>();
+    responce.read<uint8_t>();
+    // Logger::log->debug("Player {} moved to ({}, {}, {}) direction ({}, {})", player.name, player.location.x, player.location.y, player.location.z, player.rotation.x, player.rotation.y);
+}
+
+void PacketHandler::reqSpawnGun(ENetPeer *peer, void *ctx)
+{
+    Buffer request = Buffer(20);
+    request.write(uint32_t(10));
+    request.write(uint32_t(10));
+    request.write(float(0));
+    request.write(float(100));
+    request.write(float(0));
+    sendMessageToPeer(peer, ClientEventCode::SpawnGun, request, true);
 }

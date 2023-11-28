@@ -2,6 +2,7 @@
 #define NETWORK_NETWORK_H_GUARD
 
 #include <memory>
+#include <unordered_map>
 
 #include <enet.h>
 
@@ -23,6 +24,7 @@ public:
     Network();
     ~Network();
     void process();
+    std::unordered_map<uint64_t, ENetPeer *> peers;
     std::string server_address;
     int64_t server_port;
 };

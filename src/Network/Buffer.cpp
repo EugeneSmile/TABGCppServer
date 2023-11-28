@@ -4,7 +4,7 @@ Buffer::Buffer(uint8_t *data, size_t size) : mem_to_delete(false), size(size), d
 {
 }
 
-Buffer::Buffer(size_t size) : mem_to_delete(true), size(size), data(new uint8_t[size]()), pos(data + 1)
+Buffer::Buffer(size_t size) : mem_to_delete(true), size(size), data(new uint8_t[size + 1]()), pos(data + 1)
 {
 }
 

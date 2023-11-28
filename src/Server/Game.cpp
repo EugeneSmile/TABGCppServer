@@ -5,7 +5,7 @@
 #include "Config.h"
 #include "Server.h"
 
-Game::Game(/* args */)
+Game::Game(/* args */) : counterCountDown(std::chrono::seconds(15))
 {
     setBus();
 }
@@ -16,31 +16,9 @@ Game::~Game()
 
 void Game::changeState(GameState state)
 {
-    switch (state)
+    if (this->state != state)
     {
-    case GameState::WaitingForPlayers:
-        break;
-
-    case GameState::CountDown:
-        break;
-
-    case GameState::Flying:
-        break;
-
-    case GameState::Started:
-        break;
-
-    case GameState::Ended:
-        break;
-
-    default:
-    case GameState::OpenDoors:
-    case GameState::RoundOver:
-    case GameState::Intermission:
-    case GameState::Voting:
-    case GameState::VotingOver:
-        changeState(GameState::WaitingForPlayers);
-        break;
+        this->state = state;
     }
 }
 
@@ -73,4 +51,40 @@ void Game::setBus()
 Bus Game::getBus()
 {
     return bus;
+}
+
+void Game::tick()
+{
+    switch (state)
+    {
+    case GameState::WaitingForPlayers:
+        if (server->players->connected.size())
+            changeState(GameState::CountDown);
+        break;
+
+    case GameState::CountDown:
+        if (!counterCountDown.active)
+            counterCountDown.start();
+        if (counterCountDown.getSeconds() == std::chrono::seconds(0))
+            changeState(GameState::Flying);
+        break;
+
+    case GameState::Flying:
+        break;
+
+    case GameState::Started:
+        break;
+
+    case GameState::Ended:
+        break;
+
+    default:
+    case GameState::OpenDoors:
+    case GameState::RoundOver:
+    case GameState::Intermission:
+    case GameState::Voting:
+    case GameState::VotingOver:
+        changeState(GameState::WaitingForPlayers);
+        break;
+    }
 }

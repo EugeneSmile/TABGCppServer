@@ -7,7 +7,7 @@
 #include <memory>
 
 #include "TypeTraits.h"
-#include "Types.h"
+#include "Enums.h"
 
 class Buffer
 {

@@ -6,25 +6,31 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <any>
 
 #include <enet.h>
 
 #include "ServerPtr.h"
-#include "Types.h"
+#include "Enums.h"
 
 class Buffer;
 class PacketHandler : public ServerPtr
 {
 private:
-    std::unordered_map<ClientEventCode, std::function<void(ENetEvent *, void *)>> functions;
-    void sendMessageToPeer(ENetEvent *event, ClientEventCode code, Buffer &buffer, bool reliable);
-    void reqInitRoom(ENetEvent *event, void *ctx = nullptr);
-    void reqLogin(ENetEvent *event, void *ctx = nullptr);
-    void reqPlayerUpdate(ENetEvent *event, void *ctx = nullptr);
+    std::unordered_map<ClientEventCode, std::function<void(ENetEvent *)>> func_responce;
+    std::unordered_map<ClientEventCode, std::function<void(ENetPeer *, void *ctx)>> func_request;
+    void sendMessageToPeer(ENetPeer *peer, ClientEventCode code, Buffer &buffer, bool reliable);
+
+    void respInitRoom(ENetEvent *event);
+    void respPlayerUpdate(ENetEvent *event);
+
+    void reqLogin(ENetPeer *peer, void *ctx);
+    void reqSpawnGun(ENetPeer *peer, void *ctx);
 
 public:
     PacketHandler();
     void handle(ENetEvent *event);
+    void callBroadcast(ClientEventCode code, void *ctx);
 };
 
 #endif

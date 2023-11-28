@@ -3,6 +3,8 @@
 
 #include "ServerPtr.h"
 #include "Types.h"
+#include "Enums.h"
+#include "Counter.h"
 
 #include <chrono>
 
@@ -15,12 +17,7 @@ struct Bus
 class Game : public ServerPtr
 {
 private:
-    struct CountDown
-    {
-        std::chrono::high_resolution_clock::time_point start;
-        std::chrono::nanoseconds timer;
-    } countdown;
-
+    Counter counterCountDown;
     Bus bus;
 
     GameState state{GameState::WaitingForPlayers};
@@ -34,6 +31,7 @@ public:
     GameState getState();
     float getCountdownCounter();
     Bus getBus();
+    void tick();
 };
 
 #endif
