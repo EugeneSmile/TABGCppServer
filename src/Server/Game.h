@@ -17,20 +17,19 @@ struct Bus
 class Game : public ServerPtr
 {
 private:
-    Counter counterCountDown;
-    Bus bus;
-
-    GameState state{GameState::WaitingForPlayers};
-
-    void setBus();
+    void randomizeBus();
 
 public:
+    Counter counterCountDown;
+    Bus bus;
+    GameState state{GameState::WaitingForPlayers};
+    float countdown_time;
+    float daytime = 0;
+    uint8_t modifier = 0;
+
     Game(/* args */);
-    ~Game();
     void changeState(GameState state);
-    GameState getState();
     float getCountdownCounter();
-    Bus getBus();
     void tick();
 };
 

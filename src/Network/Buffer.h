@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "TypeTraits.h"
 #include "Enums.h"
@@ -25,10 +26,15 @@ public:
     void moveBackward(size_t bytes);
     void finish(uint8_t byte = uint8_t(0));
     size_t getSize();
+    size_t getRemainSize();
     ClientEventCode getClientEventCode();
     void setClientEventCode(ClientEventCode code);
+    std::vector<uint8_t> getVector();
 
-    operator uint8_t *() const { return data; };
+    operator uint8_t *() const
+    {
+        return data;
+    };
 
     template <typename T>
         requires IsInteger<T> || IsBool<T> || IsFloat<T> || IsVectorStruct<T>
@@ -40,12 +46,12 @@ public:
         return *ret;
     }
 
-    template <typename T>
+    template <typename T, typename U = uint8_t>
         requires IsString<T>
     std::string read()
     {
-        uint8_t length = *pos;
-        ++pos;
+        U length = *static_cast<U *>(static_cast<void *>(pos));
+        pos += sizeof(U);
         std::string ret = std::string(static_cast<char *>(static_cast<void *>(pos)), length);
         pos += length;
         return ret;
@@ -57,6 +63,13 @@ public:
     {
         memcpy(pos, &data, sizeof(data));
         pos += sizeof(data);
+    }
+
+    template <typename T>
+        requires IsEnum<T>
+    void write(T data)
+    {
+        write(static_cast<uint8_t>(data));
     }
 
     template <typename T>

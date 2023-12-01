@@ -23,6 +23,18 @@ void Server::init()
     cars = std::make_shared<Cars>();
 
     Logger::log->set_level(static_cast<spdlog::level::level_enum>(Config::getValue("level", 2, "Log")));
+
+    experimental_init();
+}
+
+void Server::deinit()
+{
+    cars.reset();
+    weapons.reset();
+    players.reset();
+    game.reset();
+    network.reset();
+    preferences.reset();
 }
 
 void Server::start(std::shared_ptr<bool> active)
@@ -53,4 +65,20 @@ void Server::run()
         else
             Logger::log->warn("Tick take too long: tick duration {}ns, limit: {}ns!", tick_duration.count(), preferences->tick_time.count());
     }
+}
+
+void Server::experimental_init()
+{
+    PlayerServiceData experimental_player_data;
+    experimental_player_data.name = "Steve";
+    experimental_player_data.session_id = 754;
+    experimental_player_data.playfab_id = "Steve";
+    experimental_player_data.gear = std::vector<uint32_t>(12, 0);
+    experimental_player_data.gear_length = 12;
+    experimental_player_data.peer_id = 0;
+    auto player = players->addPlayer(experimental_player_data);
+    player->service.connected = false;
+    player->game.position = {-20, 150, 0};
+
+    cars->addCar({1, 0, {0, 100, 0}});
 }

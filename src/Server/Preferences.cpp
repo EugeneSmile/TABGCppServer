@@ -9,7 +9,7 @@ Preferences::Preferences()
     id = genUUID();
     name = Config::getValue("name", std::string(PROJECT_NAME), "Server");
     description = Config::getValue("description", std::string(PROJECT_NAME) + " TABG Server", "Server");
-    uint8_t max_players = Config::getValue("max_players", 64, "Server");
+    max_players = Config::getValue("max_players", 64, "Server");
     squad_mode = Config::getValue("squad_mode", "SOLO", "Server");
     game_mode = Config::getValue("game_mode", "BattleRoyale", "Game");
     password = Config::getValue("password", "", "Server");

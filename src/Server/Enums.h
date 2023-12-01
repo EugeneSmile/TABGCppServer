@@ -134,6 +134,11 @@ enum ClientEventCode
     Join
 };
 
+inline ClientEventCode operator|(ClientEventCode a, ClientEventCode b)
+{
+    return static_cast<ClientEventCode>(static_cast<int>(a) | static_cast<int>(b));
+}
+
 enum GameMode
 {
     BattleRoyale,
@@ -178,5 +183,43 @@ enum PacketContainerFlags
     CarInput = 0x20,
     All = 0x40
 };
+
+inline PacketContainerFlags operator|(PacketContainerFlags a, PacketContainerFlags b)
+{
+    return static_cast<PacketContainerFlags>(static_cast<int>(a) | static_cast<int>(b));
+}
+
+enum DrivingState
+{
+    NoDriving = 0x0,
+    InsideCar = 0x1,
+    Driving = 0x2,
+    Slow = 0x4
+};
+
+enum CarDrivingState
+{
+    NoDrivingState = 0,
+    TokyoDrift = 1,
+    Honking = 2
+};
+
+enum FiringMode
+{
+    NoFiringMode = 0x0,
+    Semi = 0x1,
+    Burst = 0x2,
+    FullAutoStart = 0x4,
+    FullAutoStop = 0x8,
+    ContainsDirection = 0x10,
+    RightGun = 0x20,
+    WantsToBeSynced = 0x40,
+    UseBulletEffect = 0x80
+};
+
+inline FiringMode operator|(FiringMode a, FiringMode b)
+{
+    return static_cast<FiringMode>(static_cast<int>(a) | static_cast<int>(b));
+}
 
 #endif

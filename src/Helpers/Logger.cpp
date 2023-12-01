@@ -15,3 +15,21 @@ void Logger::init()
     spdlog::flush_every(std::chrono::seconds(10));
     Logger::log->info("Logger initialized");
 }
+
+void Logger::deinit()
+{
+    for (size_t i = 0; i < Logger::sinks.size(); ++i)
+        sinks[i].reset();
+    packet_sink.reset();
+    log.reset();
+    packet_log.reset();
+    spdlog::shutdown();
+}
+
+void Logger::createPacketLogger()
+{
+    Logger::packet_sink = std::make_shared<spdlog::sinks::rotating_file_sink_mt>(std::string(PROJECT_NAME) + ".net.log", 1048576 * 1000, 10);
+    Logger::packet_log = std::make_shared<spdlog::async_logger>("Packet", packet_sink, spdlog::thread_pool(), spdlog::async_overflow_policy::block);
+    Logger::packet_log->set_pattern("[%d/%m/%Y %H:%M:%S.%e] %v");
+    spdlog::register_logger(Logger::packet_log);
+}

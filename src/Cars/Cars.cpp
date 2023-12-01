@@ -1,20 +1,21 @@
 #include "Cars.h"
 
-Car &Cars::getCar(uint32_t id)
+std::vector<std::pair<CarServiceData, Car>>::iterator Cars::findCar(const uint8_t game_index)
 {
-    return cars.at(id);
+    for (auto it = cars.begin(); it != cars.end(); ++it)
+        if (it->first.game_index == game_index)
+            return it;
+    return cars.end();
 }
 
-void Cars::spawnCar(Car car)
+std::vector<std::pair<CarServiceData, Car>>::iterator Cars::addCar(Car car)
 {
-    cars.push_back(car);
-}
-void Cars::removeCar(uint32_t id)
-{
-    cars.erase(std::next(cars.begin(), id));
+    return cars.end();
 }
 
-uint32_t Cars::getNumberOfCars()
+void Cars::removeCar(const uint8_t game_index)
 {
-    return cars.size();
+    auto car = findCar(game_index);
+    if (car != cars.end())
+        cars.erase(car);
 }

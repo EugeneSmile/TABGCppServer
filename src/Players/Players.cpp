@@ -4,70 +4,75 @@
 
 #include "Logger.h"
 
-std::vector<std::pair<PlayerServiceData, Player>>::iterator Players::addPlayer(const uint32_t net_id, const LoginData &data)
+std::vector<Player>::iterator Players::addPlayer(PlayerServiceData &service_data)
 {
-    if (findPlayer(data.login_key) == players.end())
+    if (findPlayer(service_data.playfab_id) == players.end())
     {
-        uint8_t index = players.size();
-        PlayerServiceData player_data;
-        player_data.key = data.login_key;
-        player_data.game_index = index;
-        player_data.net_id = net_id;
-        player_data.login_data = data;
-        players.push_back({player_data, Player(data)});
-        connected.push_back(index);
+        service_data.game_index = players.size();
+        service_data.connected = true;
+        players.push_back({service_data, {}});
+        connected.push_back(service_data.game_index);
     }
     else
     {
-        auto player = findPlayer(net_id);
+        auto player = findPlayer(service_data.peer_id);
         if (player == players.end())
         {
-            connected.push_back(player->first.game_index);
-            player->first.net_id = net_id;
+            player = findPlayer(service_data.playfab_id);
+            connected.push_back(player->service.game_index);
+            player->service.connected = true;
+            player->service.peer_id = service_data.peer_id;
         }
         else
             Logger::log->warn("Player duplication");
     }
-    return findPlayer(data.login_key);
+    return findPlayer(service_data.playfab_id);
 }
-uint64_t Players::removePlayer(const uint32_t net_id)
+
+std::vector<Player>::iterator Players::removePlayer(const uint32_t peer_id)
 {
-    auto player = findPlayer(net_id);
+    auto player = findPlayer(peer_id);
     if (player != players.end())
     {
-        auto it = std::find(connected.begin(), connected.end(), player->first.game_index);
+        player->service.connected = false;
+        auto it = std::find(connected.begin(), connected.end(), player->service.game_index);
         if (it != connected.end())
         {
             connected.erase(it);
-            return player->first.key;
+            return player;
         }
     }
-    return 0;
+    return players.end();
 }
 
-std::vector<std::pair<PlayerServiceData, Player>>::iterator Players::findPlayer(const uint8_t game_index)
+std::vector<Player>::iterator Players::findPlayer(const std::string &playfab_id)
 {
     for (auto it = players.begin(); it != players.end(); ++it)
-        if (it->first.game_index == game_index)
-            return it;
-    return players.end();
-}
-std::vector<std::pair<PlayerServiceData, Player>>::iterator Players::findPlayer(const uint32_t net_id)
-{
-    for (auto it = players.begin(); it != players.end(); ++it)
-        if (it->first.net_id == net_id)
-            return it;
-    return players.end();
-}
-std::vector<std::pair<PlayerServiceData, Player>>::iterator Players::findPlayer(const uint64_t key)
-{
-    for (auto it = players.begin(); it != players.end(); ++it)
-        if (it->first.key == key)
+        if (it->service.playfab_id == playfab_id)
             return it;
     return players.end();
 }
 
-void Players::updatePlayerLocation(uint8_t id, Vector3f new_location)
+std::vector<Player>::iterator Players::findPlayer(const uint8_t game_index)
 {
-    findPlayer(id)->second.location = new_location;
+    for (auto it = players.begin(); it != players.end(); ++it)
+        if (it->service.game_index == game_index)
+            return it;
+    return players.end();
+}
+
+std::vector<Player>::iterator Players::findPlayer(const uint32_t peer_id)
+{
+    for (auto it = players.begin(); it != players.end(); ++it)
+        if (it->service.peer_id == peer_id)
+            return it;
+    return players.end();
+}
+
+std::vector<Player>::iterator Players::findPlayer(const uint64_t key)
+{
+    for (auto it = players.begin(); it != players.end(); ++it)
+        if (it->service.session_id == key)
+            return it;
+    return players.end();
 }

@@ -29,10 +29,13 @@ public:
     std::shared_ptr<Weapons> weapons;
     std::shared_ptr<Cars> cars;
 
+    void experimental_init();
+
     Server() = default;
     [[nodiscard]] static std::shared_ptr<Server> create();
     std::shared_ptr<Server> getPointer();
     void init();
+    void deinit();
     void start(std::shared_ptr<bool> active);
     void stop();
     void restart();

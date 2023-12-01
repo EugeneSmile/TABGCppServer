@@ -24,6 +24,9 @@ template <typename T>
 concept IsBool = IsAnyOf<T, bool>;
 
 template <typename T>
-concept IsVectorStruct = IsAnyOf<T, Vector3f, Vector2f>;
+concept IsVectorStruct = IsAnyOf<T, Vector3f, Vector2f, Vector2u8, Vector2u16, Vector2u32, Vector2u64, Vector2i8, Vector2i16, Vector2i32, Vector2i64, Vector3u8, Vector3u16, Vector3u32, Vector3u64, Vector3i8, Vector3i16, Vector3i32, Vector3i64>;
+
+template <typename T>
+concept IsEnum = std::is_enum<T>::value;
 
 #endif

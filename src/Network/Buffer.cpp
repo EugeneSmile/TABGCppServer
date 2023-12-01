@@ -33,6 +33,11 @@ size_t Buffer::getSize()
     return size;
 }
 
+size_t Buffer::getRemainSize()
+{
+    return data + size - pos;
+}
+
 ClientEventCode Buffer::getClientEventCode()
 {
     return static_cast<ClientEventCode>(data[0]);
@@ -41,4 +46,9 @@ ClientEventCode Buffer::getClientEventCode()
 void Buffer::setClientEventCode(ClientEventCode code)
 {
     data[0] = static_cast<uint8_t>(code);
+}
+
+std::vector<uint8_t> Buffer::getVector()
+{
+    return std::vector<uint8_t>(data, data + size);
 }

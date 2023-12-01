@@ -6,17 +6,15 @@
 
 #include "ServerPtr.h"
 #include "Car.h"
+#include "Types.h"
 
 class Cars : public ServerPtr
 {
-private:
-    std::vector<Car> cars;
-
 public:
-    Car &getCar(uint32_t id);
-    void spawnCar(Car car);
-    void removeCar(uint32_t id);
-    uint32_t getNumberOfCars();
+    std::vector<std::pair<CarServiceData, Car>> cars;
+    std::vector<std::pair<CarServiceData, Car>>::iterator findCar(const uint8_t game_index);
+    std::vector<std::pair<CarServiceData, Car>>::iterator addCar(Car car);
+    void removeCar(const uint8_t game_index);
 };
 
 #endif

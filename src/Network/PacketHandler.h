@@ -3,35 +3,34 @@
 
 #include <functional>
 #include <unordered_map>
-#include <iostream>
 #include <memory>
 #include <vector>
-#include <any>
 
 #include <enet.h>
 
 #include "ServerPtr.h"
 #include "Enums.h"
+#include "Requests.h"
+#include "Responses.h"
 
 class Buffer;
 class PacketHandler : public ServerPtr
 {
 private:
-    std::unordered_map<ClientEventCode, std::function<void(ENetEvent *)>> func_responce;
-    std::unordered_map<ClientEventCode, std::function<void(ENetPeer *, void *ctx)>> func_request;
-    void sendMessageToPeer(ENetPeer *peer, ClientEventCode code, Buffer &buffer, bool reliable);
+    Requests requests;
+    Responses responses;
 
-    void respInitRoom(ENetEvent *event);
-    void respPlayerUpdate(ENetEvent *event);
+    std::vector<ClientEventCode> periodic_broadcast_codes;
 
-    void reqPlayerUpdate(ENetPeer *peer, void *ctx);
-    void reqLogin(ENetPeer *peer, void *ctx);
-    void reqSpawnGun(ENetPeer *peer, void *ctx);
+    std::vector<ClientEventCode> packet_log_filter;
+    void logPacket(Buffer &buffer, const std::string &header);
 
 public:
     PacketHandler();
-    void handle(ENetEvent *event);
-    void callBroadcast(ClientEventCode code, void *ctx);
+    void handleResponce(ENetEvent *event);
+    void handleRequest(ENetPeer *peer, ClientEventCode code, Buffer &buffer, bool reliable);
+    void doBroadcasts();
+    void doRequest(ClientEventCode code, void *ctx = nullptr, ENetPeer *peer = nullptr);
 };
 
 #endif

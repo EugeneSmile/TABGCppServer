@@ -7,11 +7,8 @@
 
 Game::Game(/* args */) : counterCountDown(std::chrono::seconds(15))
 {
-    setBus();
-}
-
-Game::~Game()
-{
+    countdown_time = Config::getValue("countdown_time", 20, "Game");
+    randomizeBus();
 }
 
 void Game::changeState(GameState state)
@@ -22,17 +19,12 @@ void Game::changeState(GameState state)
     }
 }
 
-GameState Game::getState()
-{
-    return state;
-}
-
 float Game::getCountdownCounter()
 {
     return 0;
 }
 
-void Game::setBus()
+void Game::randomizeBus()
 {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -46,11 +38,6 @@ void Game::setBus()
     bus.finish.x = dis(gen);
     dis = (bus.start.z < 500 ? std::uniform_int_distribution<>(500, 1000) : std::uniform_int_distribution<>(0, 500));
     bus.finish.z = dis(gen);
-}
-
-Bus Game::getBus()
-{
-    return bus;
 }
 
 void Game::tick()
