@@ -18,8 +18,21 @@ public:
 
     Responses();
     void initRoom(ENetEvent *event);
+    void worldState(ENetEvent *event);
     void playerUpdate(ENetEvent *event);
     void playerFire(ENetEvent *event);
+    void airplaneDrop(ENetEvent *event);
+    void playerLand(ENetEvent *event);
+    void ringDeath(ENetEvent *event);
+    void playerDead(ENetEvent *event);
+    void syncProjectile(ENetEvent *event);
+    void curseCleanse(ENetEvent *event);
+    void respawnTeammate(ENetEvent *event);
+    void clickInteract(ENetEvent *event);
+    void healthState(ENetEvent *event);
+    void chatMessage(ENetEvent *event);
+    void reviveState(ENetEvent *event);
+    void markerChange(ENetEvent *event);
 };
 
 #endif

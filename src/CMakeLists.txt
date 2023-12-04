@@ -28,6 +28,8 @@ configure_file(
     ${CMAKE_CURRENT_LIST_DIR}/Helpers/Version.h.in
     ${CMAKE_CURRENT_LIST_DIR}/Helpers/Version.h)
 
+add_compile_definitions(MAGIC_ENUM_RANGE_MIN=0 MAGIC_ENUM_RANGE_MAX=256)
+
 set(${PROJECT_NAME}_SOURCES "main.cpp")
 set(${PROJECT_NAME}_INCLUDES "Helpers/Version.h")
 set(${PROJECT_NAME}_INCLUDE_DIRS "")

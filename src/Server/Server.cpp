@@ -19,18 +19,20 @@ void Server::init()
     network = std::make_shared<Network>();
     game = std::make_shared<Game>();
     players = std::make_shared<Players>();
+    groups = std::make_shared<Groups>();
     weapons = std::make_shared<Weapons>();
     cars = std::make_shared<Cars>();
 
     Logger::log->set_level(static_cast<spdlog::level::level_enum>(Config::getValue("level", 2, "Log")));
 
-    experimental_init();
+    // experimental_init();
 }
 
 void Server::deinit()
 {
     cars.reset();
     weapons.reset();
+    groups.reset();
     players.reset();
     game.reset();
     network.reset();
@@ -57,6 +59,7 @@ void Server::run()
     {
         std::chrono::high_resolution_clock::time_point tick_start = std::chrono::high_resolution_clock::now();
 
+        game->tick();
         network->process();
 
         std::chrono::nanoseconds tick_duration = std::chrono::high_resolution_clock::now() - tick_start;
@@ -78,7 +81,13 @@ void Server::experimental_init()
     experimental_player_data.peer_id = 0;
     auto player = players->addPlayer(experimental_player_data);
     player->service.connected = false;
-    player->game.position = {-20, 150, 0};
+    player->game.position = {-20, 115, -20};
 
-    cars->addCar({1, 0, {0, 100, 0}});
+    cars->addCar({1, 0, {0, 115, -10}});
+    cars->addCar({1, 1, {10, 115, -10}});
+    cars->addCar({1, 2, {20, 115, -10}});
+    cars->addCar({1, 3, {30, 115, -10}});
+    cars->addCar({1, 4, {40, 115, -10}});
+    cars->addCar({1, 5, {50, 115, -10}});
+    cars->addCar({1, 6, {60, 115, -10}});
 }

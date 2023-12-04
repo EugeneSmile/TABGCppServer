@@ -3,9 +3,9 @@
 #include <chrono>
 #include <string>
 #include <arpa/inet.h>
-#include <tuple>
 
 #include "Server.h"
+#include "NetworkTypes.h"
 
 Network::Network()
 {
@@ -60,9 +60,10 @@ void Network::removePeer(uint32_t peer)
     if (player != server->players->players.end())
     {
         peers.erase(player->service.playfab_id);
-        std::tuple player_left_payload =
-            {player->service.game_index, false};
-        packet_handler.doRequest(ClientEventCode::PlayerLeft, static_cast<void *>(&player_left_payload));
+        NPlayerLeft payload;
+        payload.player_game_id = player->service.game_index;
+        payload.player_destroy = true;
+        packet_handler.doRequest(ClientEventCode::PlayerLeft, static_cast<void *>(&payload));
     }
 }
 

@@ -3,21 +3,30 @@
 
 #include <string>
 #include <cstdint>
+#include <unordered_map>
 
 #include "Types.h"
 #include "Enums.h"
 
-enum MovementType
+enum class MovementType
 {
     NoFlags = 0x0,
     Flag0 = 0x1,
     Flag1 = 0x2,
     Flag2 = 0x4,
     Flag3 = 0x8,
-    Flag4 = 0x10,
-    Flag5 = 0x20,
+    Duck = 0x10,
+    Lying = 0x20,
     Flag6 = 0x40,
     Jump = 0x80
+};
+
+struct Marker
+{
+    MarkerType type{MarkerType::Marker};
+    Vector3f position{0, 0, 0};
+    Vector3f normal{0, 0, 0};
+    bool set{false};
 };
 
 struct PlayerServiceData
@@ -44,14 +53,16 @@ struct PlayerServiceData
 struct PlayerGameData
 {
     float health{100};
-    Vector3f position{0, 100, 0};
+    // Vector3f position{420, 135, 460};
+    Vector3f position{0, 135, 0};
     Vector2f rotation{0, 0};
-    Vector3u8 direction{0, 0, 0};
+    Vector3f direction{0, 0, 0};
     bool aim_down_sight{false};
     MovementType movement_type{MovementType::NoFlags};
+    std::unordered_map<MarkerType, Marker> markers{{MarkerType::Marker, {}}, {MarkerType::Ping, {}}};
     struct Firing
     {
-        FiringMode mode{FiringMode::NoFiringMode};
+        FiringMode mode{FiringMode::None};
         uint32_t ammo_type;
         std::vector<uint8_t> extra_data;
     } firing;
@@ -60,7 +71,7 @@ struct PlayerGameData
         bool is_driving{false};
         uint32_t car_id{0};
         uint32_t seat_id{0};
-        DrivingState state{DrivingState::NoDriving};
+        DrivingState state{DrivingState::None};
     } driving;
 };
 
@@ -68,6 +79,7 @@ struct Player
 {
     PlayerServiceData service;
     PlayerGameData game;
+    void kill();
 };
 
 #endif

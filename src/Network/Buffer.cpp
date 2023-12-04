@@ -33,6 +33,11 @@ size_t Buffer::getSize()
     return size;
 }
 
+size_t Buffer::getUsedSize()
+{
+    return pos - data;
+}
+
 size_t Buffer::getRemainSize()
 {
     return data + size - pos;
@@ -48,7 +53,12 @@ void Buffer::setClientEventCode(ClientEventCode code)
     data[0] = static_cast<uint8_t>(code);
 }
 
-std::vector<uint8_t> Buffer::getVector()
+uint8_t Buffer::getByCustomPosition(size_t position)
 {
-    return std::vector<uint8_t>(data, data + size);
+    return data[position];
+}
+
+uint8_t *Buffer::getData()
+{
+    return data;
 }

@@ -7,6 +7,8 @@
 #include <concepts>
 
 #include "Types.h"
+#include "NetworkTypes.h"
+#include "Quaternion.h"
 
 template <typename T, typename... U>
 concept IsAnyOf = (std::same_as<T, U> || ...);
@@ -28,5 +30,11 @@ concept IsVectorStruct = IsAnyOf<T, Vector3f, Vector2f, Vector2u8, Vector2u16, V
 
 template <typename T>
 concept IsEnum = std::is_enum<T>::value;
+
+template <typename T>
+concept IsCustomStruct = IsAnyOf<T, NWeaponPickup>;
+
+template <typename T>
+concept IsQuaternion = IsAnyOf<T, Quaternion, const Quaternion>;
 
 #endif

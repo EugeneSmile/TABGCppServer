@@ -5,6 +5,8 @@
 
 #include <iostream>
 
+#include <magic_enum.hpp>
+
 #include "Server.h"
 #include "Version.h"
 #include "Config.h"
@@ -12,7 +14,7 @@
 
 Interface::Interface(/* args */)
 {
-    // app.loglevel(crow::LogLevel::WARNING);
+    app.loglevel(crow::LogLevel::WARNING);
     app.signal_clear();
 
     CROW_ROUTE(app, "/")
@@ -23,6 +25,8 @@ Interface::Interface(/* args */)
 
     CROW_ROUTE(app, "/GetServerList").methods(crow::HTTPMethod::POST)(std::bind(&Interface::getServerList, this, std::placeholders::_1));
     CROW_ROUTE(app, "/GetServerInfo").methods(crow::HTTPMethod::POST)(std::bind(&Interface::getServerInfo, this, std::placeholders::_1));
+
+    CROW_ROUTE(app, "/Console").methods(crow::HTTPMethod::POST)(std::bind(&Interface::console, this, std::placeholders::_1));
 
     const std::string interface_address = Config::getValue("address", "0.0.0.0", "Interface");
     const int64_t interface_port = Config::getValue("port", 3010, "Interface");
@@ -79,6 +83,29 @@ crow::json::wvalue Interface::getServerInfo(const crow::request &request)
             ret["joinCode"] = server->network->server_address + ":" + std::to_string(server->network->server_port);
             ret["errorCode"] = "null";
         }
+    }
+    return ret;
+}
+
+crow::json::wvalue Interface::console(const crow::request &request)
+{
+    crow::json::wvalue ret;
+    crow::json::rvalue request_json = crow::json::load(request.body);
+    if (request_json.has("setGameState"))
+        server->game->changeState(static_cast<GameState>(request_json["setGameState"].i()));
+    if (request_json.has("getGameState"))
+        ret["GameState"] = std::string(magic_enum::enum_name(server->game->state));
+    if (request_json.has("setPlayerPosition") && request_json["setPlayerPosition"].has("id") && request_json["setPlayerPosition"].has("x") && request_json["setPlayerPosition"].has("y") && request_json["setPlayerPosition"].has("z"))
+        server->players->findPlayer(static_cast<uint8_t>(request_json["setPlayerPosition"]["id"].i()))->game.position = {
+            static_cast<float>(request_json["setPlayerPosition"]["x"].i()),
+            static_cast<float>(request_json["setPlayerPosition"]["y"].i()),
+            static_cast<float>(request_json["setPlayerPosition"]["z"].i())};
+    if (request_json.has("getPlayerPosition") && request_json["getPlayerPosition"].has("id"))
+    {
+        auto pos = server->players->findPlayer(static_cast<uint8_t>(request_json["getPlayerPosition"]["id"].i()))->game.position;
+        ret["PlayerPosition"]["x"] = pos.x;
+        ret["PlayerPosition"]["y"] = pos.y;
+        ret["PlayerPosition"]["z"] = pos.z;
     }
     return ret;
 }

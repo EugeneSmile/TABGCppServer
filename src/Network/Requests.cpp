@@ -2,128 +2,148 @@
 
 #include "Server.h"
 #include "Buffer.h"
+#include "VectorConverter.h"
 
 Requests::Requests()
 {
+    function[ClientEventCode::RoomInitRequestResponse] = std::bind(&Requests::initRoom, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::Login] = std::bind(&Requests::login, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::PlayerLeft] = std::bind(&Requests::playerLeft, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::PlayerUpdate] = std::bind(&Requests::playerUpdate, this, std::placeholders::_1, std::placeholders::_2);
-    function[ClientEventCode::SpawnGun] = std::bind(&Requests::spawnGun, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::GameStateChanged] = std::bind(&Requests::gameStateChanged, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::WeaponPickUpAccepted] = std::bind(&Requests::weaponPickup, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::PlayerAirplaneDropped] = std::bind(&Requests::airplaneDrop, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::ChatMessage] = std::bind(&Requests::chatMessage, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::SpawnGun] = std::bind(&Requests::spawnGun, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void Requests::initRoom(void *ctx, ENetPeer *peer)
+{
+    Buffer request = Buffer(8 + server->preferences->name.size() + 4);
+
+    request.write(ServerResponse::Accepted);
+    request.write(GameMode::BattleRoyale);
+    request.write(uint8_t(0));
+    request.write(static_cast<NInitRoom *>(ctx)->player_game_id);
+    request.write(static_cast<NInitRoom *>(ctx)->group_game_id);
+    request.write<std::string>(server->preferences->name);
+
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::RoomInitRequestResponse, &request, true);
 }
 
 void Requests::login(void *ctx, ENetPeer *peer)
 {
-    std::string player_id = *static_cast<std::string *>(ctx);
-    auto player = server->players->findPlayer(player_id);
+    auto player = server->players->findPlayer(*static_cast<std::string *>(ctx));
 
-    Buffer reply_login = Buffer(4096);
+    Buffer request = Buffer(4096);
 
-    reply_login.write(player->service.game_index);
-    reply_login.write(uint8_t(0));
-    reply_login.write<std::string>(player->service.name);
-    reply_login.write(bool(true));
-    reply_login.write(player->game.position);
-    reply_login.write(player->game.rotation.y);
-    reply_login.write(bool(false));
-    reply_login.write(bool(false));
-    reply_login.write(player->game.health);
-    reply_login.write(player->game.driving.is_driving);
-    if (player->game.driving.is_driving)
+    request.write(player->service.game_index);
+    request.write(server->groups->player_group_map[player->service.game_index]);
+    request.write<std::string>(player->service.name);
+    if (peer != nullptr)
     {
-        reply_login.write(player->game.driving.car_id);
-        reply_login.write(player->game.driving.seat_id);
-    }
-    reply_login.write(uint8_t(server->players->connected.size()));
-    for (const auto &other_player : server->players->players)
-    {
-        reply_login.write(other_player.service.game_index);
-        reply_login.write(other_player.service.group_index);
-        reply_login.write<std::string>(other_player.service.name);
-        // weapon (?)
-        reply_login.write(uint32_t(0));
-        // array size (?)
-        reply_login.write(other_player.service.gear_length);
-        for (size_t i = 0; i < other_player.service.gear_length; ++i)
-            reply_login.write(other_player.service.gear[i]);
-        reply_login.write(other_player.service.dev);
-        // color
-        reply_login.write(other_player.service.color);
-    }
-
-    // Weapons
-    reply_login.write(server->weapons->getNumberOfWeapons());
-    for (uint32_t i = 0; i < server->weapons->getNumberOfWeapons(); ++i)
-    {
-        Weapon &weapon = server->weapons->getWeapon(i);
-        reply_login.write(i);
-        // uniqueIdentifier (?) - uint32
-        reply_login.write(weapon.type);
-        // quantity (?) - uint32
-        reply_login.write(weapon.count);
-        // spawn
-        reply_login.write(weapon.location);
-    }
-
-    // Cars
-    reply_login.write(server->cars->cars.size());
-    for (const auto &car_pair : server->cars->cars)
-    {
-        auto &car = car_pair.second;
-        reply_login.write(car_pair.first.game_index);
-        // Currently unknown (?)
-        reply_login.write(car.type);
-        reply_login.write(car.seats);
-        for (uint32_t j = 0; j < car.seats; ++j)
-            reply_login.write(j);
-        reply_login.write(uint8_t(car.parts.size()));
-        for (uint8_t j = 0; j < car.parts.size(); ++j)
+        request.write(player->service.dev);
+        request.write(player->game.position);
+        request.write(player->game.rotation.y);
+        request.write(!bool(player->game.health));
+        request.write(bool(player->game.health < 100));
+        request.write(player->game.health);
+        request.write(player->game.driving.is_driving);
+        if (player->game.driving.is_driving)
         {
-            reply_login.write(j);
-            reply_login.write(car.parts[j].health);
-            reply_login.write<std::string>(car.parts[j].name);
+            request.write(player->game.driving.car_id);
+            request.write(player->game.driving.seat_id);
+        }
+        request.write(uint8_t(server->players->connected.size()));
+        for (const auto &other_player : server->players->players)
+        {
+            request.write(other_player.service.game_index);
+            request.write(server->groups->player_group_map[other_player.service.game_index]);
+            request.write<std::string>(other_player.service.name);
+            // weapon (?)
+            request.write(uint32_t(0));
+            // array size (?)
+            request.write(other_player.service.gear_length);
+            for (size_t i = 0; i < other_player.service.gear_length; ++i)
+                request.write(other_player.service.gear[i]);
+            request.write(other_player.service.dev);
+            // color
+            request.write(other_player.service.color);
+        }
+
+        // Weapons
+        request.write(server->weapons->getNumberOfWeapons());
+        for (uint32_t i = 0; i < server->weapons->getNumberOfWeapons(); ++i)
+        {
+            Weapon &weapon = server->weapons->getWeapon(i);
+            request.write(i);
+            // uniqueIdentifier (?) - uint32
+            request.write(weapon.type);
+            // quantity (?) - uint32
+            request.write(weapon.count);
+            // spawn
+            request.write(weapon.location);
+        }
+
+        // Cars
+        request.write(server->cars->cars.size());
+        for (const auto &car_pair : server->cars->cars)
+        {
+            auto &car = car_pair.second;
+            request.write(car_pair.first.game_index);
+            // Currently unknown (?)
+            request.write(car.type);
+            request.write(car.seats);
+            for (uint32_t j = 0; j < car.seats; ++j)
+                request.write(j);
+            request.write(uint8_t(car.parts.size()));
+            for (uint8_t j = 0; j < car.parts.size(); ++j)
+            {
+                request.write(j);
+                request.write(car.parts[j].health);
+                request.write<std::string>(car.parts[j].name);
+            }
+        }
+
+        // time of day
+        request.write(float(0));
+        // seconds to first ring
+        request.write(float(1000));
+        // base ring time
+        request.write(float(1000));
+
+        // (?) need to clarify
+        uint8_t some_index = 0;
+        request.write(some_index);
+        for (size_t i = 0; i < some_index; ++i)
+        {
+            request.write(float(10));
+            request.write(float(20));
+        }
+
+        request.write(server->preferences->lives);
+        request.write(server->preferences->kills);
+        // Need to implement game state
+        request.write(server->game->state);
+        if (server->game->state == GameState::CountDown)
+            request.write(server->game->getCountdownCounter());
+        if (server->game->state == GameState::Flying || server->game->state == GameState::Started)
+        {
+            // (?) not clear boolean
+            request.write(bool(true));
+            request.write(server->game->plane.start);
+            request.write(server->game->plane.finish);
         }
     }
-
-    // time of day
-    reply_login.write(float(0));
-    // seconds to first ring
-    reply_login.write(float(1000));
-    // base ring time
-    reply_login.write(float(1000));
-
-    // (?) need to clarify
-    uint8_t some_index = 0;
-    reply_login.write(some_index);
-    for (size_t i = 0; i < some_index; ++i)
+    else
     {
-        reply_login.write(float(10));
-        reply_login.write(float(20));
+        request.write(player->service.gear_length);
+        for (size_t i = 0; i < player->service.gear_length; ++i)
+            request.write(player->service.gear.at(i));
+        request.write(player->service.dev);
+        request.write(player->service.color);
     }
-
-    reply_login.write(server->preferences->lives);
-    reply_login.write(server->preferences->kills);
-    // Need to implement game state
-    reply_login.write(server->game->state);
-    if (server->game->state == GameState::CountDown)
-        reply_login.write(server->game->getCountdownCounter());
-    if (server->game->state == GameState::Flying || server->game->state == GameState::Started)
-    {
-        // (?) not clear boolean
-        reply_login.write(bool(true));
-        reply_login.write(server->game->bus.start);
-        reply_login.write(server->game->bus.finish);
-    }
-
-    // (?) size of some array of uint32
-    reply_login.write(uint32_t(0));
-    // for (array)
-    // (?) some bool
-    reply_login.write(bool(false));
-    // (?) color
-    reply_login.write(uint32_t(0));
-
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::Login, reply_login, true);
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::Login, &request, true);
 }
 
 void Requests::playerUpdate(void *ctx, ENetPeer *peer)
@@ -148,12 +168,10 @@ void Requests::playerUpdate(void *ctx, ENetPeer *peer)
                 request.write(car.position);
             if (packet_flags & PacketContainerFlags::CarRotation || packet_flags == PacketContainerFlags::All)
             {
-                request.write(car.rotation_state);
-                if (car.rotation_state < 4)
-                    request.write(car.rotation);
+                request.write<Quaternion>(car.rotation);
             }
             if (packet_flags & PacketContainerFlags::CarInput || packet_flags == PacketContainerFlags::All)
-                request.write(car.input);
+                request.write(convertFloatToUInt8(car.input));
             if (packet_flags & PacketContainerFlags::PlayerRotation || packet_flags == PacketContainerFlags::All)
                 request.write(player.game.rotation);
             request.write(car.driving_state);
@@ -181,24 +199,22 @@ void Requests::playerUpdate(void *ctx, ENetPeer *peer)
     // Cars section
 
     request.write(uint8_t(server->cars->cars.size()));
-    for (const auto &car : server->cars->cars)
+    for (auto &car : server->cars->cars)
     {
         request.write(car.first.game_index);
         request.write(car.second.position);
-        request.write(car.second.rotation_state);
-        if (car.second.rotation_state < 4)
-            request.write(car.second.rotation);
+        request.write<Quaternion>(car.second.rotation);
     }
 
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerUpdate, request, true);
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerUpdate, &request, true);
 }
 
 void Requests::playerLeft(void *ctx, ENetPeer *peer)
 {
     Buffer request = Buffer(3);
-    request.write(static_cast<uint8_t *>(ctx)[0]);
-    request.write(static_cast<bool *>(ctx)[1]);
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerLeft, request, true);
+    request.write(static_cast<NPlayerLeft *>(ctx)->player_game_id);
+    request.write(static_cast<NPlayerLeft *>(ctx)->player_destroy);
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerLeft, &request, true);
 }
 
 void Requests::gameStateChanged(void *ctx, ENetPeer *peer)
@@ -212,8 +228,8 @@ void Requests::gameStateChanged(void *ctx, ENetPeer *peer)
         break;
 
     case GameState::Flying:
-        request.write(server->game->bus.start);
-        request.write(server->game->bus.finish);
+        request.write(server->game->plane.start);
+        request.write(server->game->plane.finish);
         request.write(server->game->daytime);
         request.write(server->game->modifier);
         break;
@@ -227,7 +243,29 @@ void Requests::gameStateChanged(void *ctx, ENetPeer *peer)
         break;
     }
 
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::GameStateChanged, request, true);
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::GameStateChanged, &request, true);
+}
+
+void Requests::weaponPickup(void *ctx, ENetPeer *peer)
+{
+    Buffer request = Buffer(15);
+    request.write(*static_cast<NWeaponPickup *>(ctx));
+}
+
+void Requests::airplaneDrop(void *ctx, ENetPeer *peer)
+{
+    Buffer request = Buffer(26);
+    auto player_id = *static_cast<uint8_t *>(ctx);
+    auto player = server->players->findPlayer(player_id);
+    request.write(player_id);
+    request.write(player->game.position);
+    request.write(player->game.direction);
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerAirplaneDropped, &request, true);
+}
+
+void Requests::chatMessage(void *ctx, ENetPeer *peer)
+{
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::ChatMessage, static_cast<Buffer *>(ctx), true);
 }
 
 void Requests::spawnGun(void *ctx, ENetPeer *peer)
@@ -238,5 +276,5 @@ void Requests::spawnGun(void *ctx, ENetPeer *peer)
     request.write(float(0));
     request.write(float(100));
     request.write(float(0));
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::SpawnGun, request, true);
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::SpawnGun, &request, true);
 }

@@ -41,3 +41,8 @@ const std::string genUUID()
     };
     return ss.str();
 }
+
+bool floatsAreEqual(float a, float b)
+{
+    return (std::fabs(a - b) <= std::numeric_limits<float>::epsilon() * std::fmax(std::fabs(a), std::fabs(b)));
+}

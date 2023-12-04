@@ -9,6 +9,7 @@
 #include "Config.h"
 #include "ServerPtr.h"
 #include "Players.h"
+#include "Groups.h"
 #include "Weapons.h"
 #include "Cars.h"
 #include "Network.h"
@@ -26,6 +27,7 @@ public:
     std::shared_ptr<Game> game;
     std::shared_ptr<Network> network;
     std::shared_ptr<Players> players;
+    std::shared_ptr<Groups> groups;
     std::shared_ptr<Weapons> weapons;
     std::shared_ptr<Cars> cars;
 

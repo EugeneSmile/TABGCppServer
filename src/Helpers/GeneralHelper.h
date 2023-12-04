@@ -9,5 +9,6 @@
 #include "TypeTraits.h"
 
 const std::string genUUID();
+bool floatsAreEqual(float a, float b);
 
 #endif

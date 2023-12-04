@@ -13,6 +13,7 @@ public:
     std::string name;
     std::string description;
     uint8_t max_players;
+    uint8_t group_size;
     std::string squad_mode;
     std::string game_mode;
     std::string password;

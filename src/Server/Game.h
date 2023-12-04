@@ -8,7 +8,7 @@
 
 #include <chrono>
 
-struct Bus
+struct Plane
 {
     Vector3f start;
     Vector3f finish;
@@ -17,11 +17,13 @@ struct Bus
 class Game : public ServerPtr
 {
 private:
-    void randomizeBus();
+    void randomizePlane();
 
 public:
-    Counter counterCountDown;
-    Bus bus;
+    Counter counter_waiting_for_players{std::chrono::seconds(10)};
+    Counter counter_countdown{std::chrono::seconds(20)};
+    Counter counter_flying{std::chrono::seconds(50)};
+    Plane plane;
     GameState state{GameState::WaitingForPlayers};
     float countdown_time;
     float daytime = 0;

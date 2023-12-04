@@ -9,6 +9,7 @@
 
 #include "TypeTraits.h"
 #include "Enums.h"
+#include "Quaternion.h"
 
 class Buffer
 {
@@ -26,10 +27,12 @@ public:
     void moveBackward(size_t bytes);
     void finish(uint8_t byte = uint8_t(0));
     size_t getSize();
+    size_t getUsedSize();
     size_t getRemainSize();
     ClientEventCode getClientEventCode();
     void setClientEventCode(ClientEventCode code);
-    std::vector<uint8_t> getVector();
+    uint8_t getByCustomPosition(size_t position);
+    uint8_t *getData();
 
     operator uint8_t *() const
     {
@@ -37,7 +40,7 @@ public:
     };
 
     template <typename T>
-        requires IsInteger<T> || IsBool<T> || IsFloat<T> || IsVectorStruct<T>
+        requires IsInteger<T> || IsBool<T> || IsFloat<T> || IsVectorStruct<T> || IsCustomStruct<T>
     T read()
     {
         T *ret;
@@ -58,7 +61,27 @@ public:
     }
 
     template <typename T>
-        requires IsInteger<T> || IsBool<T> || IsFloat<T> || IsVectorStruct<T>
+        requires IsQuaternion<T>
+    T read()
+    {
+        Quaternion ret;
+        uint8_t type = *pos;
+        ++pos;
+        if (type > 4)
+        {
+            ret = Quaternion(type);
+        }
+        else
+        {
+            Vector3u16 vec;
+            vec = read<Vector3u16>();
+            ret = Quaternion(type, vec);
+        }
+        return ret;
+    }
+
+    template <typename T>
+        requires IsInteger<T> || IsBool<T> || IsFloat<T> || IsVectorStruct<T> || IsCustomStruct<T>
     void write(T data)
     {
         memcpy(pos, &data, sizeof(data));
@@ -92,6 +115,20 @@ public:
         pos += sizeof(length);
         memcpy(pos, data, length);
         pos += length;
+    }
+
+    template <typename T>
+        requires IsQuaternion<T>
+    void write(Quaternion &data)
+    {
+        std::pair<uint8_t, float> type_and_sign = data.getTypeAndSign();
+        *pos = type_and_sign.first;
+        ++pos;
+        if (*(pos - 1) < 4)
+        {
+            write(data.getVector(type_and_sign));
+            pos += sizeof(Vector3u16);
+        }
     }
 };
 
