@@ -14,6 +14,7 @@ Responses::Responses()
     function[ClientEventCode::RequestAirplaneDrop] = std::bind(&Responses::airplaneDrop, this, std::placeholders::_1);
     function[ClientEventCode::ChatMessage] = std::bind(&Responses::chatMessage, this, std::placeholders::_1);
     function[ClientEventCode::ThrowChatMessage] = std::bind(&Responses::throwChatMessage, this, std::placeholders::_1);
+    function[ClientEventCode::TABGPing] = [](ENetEvent *) {};
 }
 
 void Responses::initRoom(ENetEvent *event)

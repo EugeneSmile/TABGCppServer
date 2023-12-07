@@ -40,7 +40,7 @@ private:
 public:
     Counter counter_waiting_for_players{std::chrono::seconds(10)};
     Counter counter_countdown{std::chrono::seconds(20)};
-    Counter counter_flying{std::chrono::seconds(50)};
+    Counter counter_flying{FLIGHT_TIME};
     Plane plane;
     std::vector<Ring> rings;
     size_t current_ring_index{0};

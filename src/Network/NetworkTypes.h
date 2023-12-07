@@ -5,12 +5,6 @@
 
 #include "Types.h"
 
-struct NQuaternion
-{
-    uint8_t index;
-    Vector3u8 coefficients;
-};
-
 struct NInitRoom
 {
     uint8_t player_game_id;

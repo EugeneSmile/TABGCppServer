@@ -14,7 +14,7 @@
 
 Interface::Interface(/* args */)
 {
-    // app.loglevel(crow::LogLevel::WARNING);
+    app.loglevel(crow::LogLevel::WARNING);
     app.signal_clear();
 
     CROW_ROUTE(app, "/")
@@ -35,7 +35,7 @@ Interface::Interface(/* args */)
                      .port(interface_port)
                      .run_async();
 
-    app.wait_for_server_start();
+    // app.wait_for_server_start();
     Logger::log->info("Interface started on {}:{}", interface_address, interface_port);
 }
 
