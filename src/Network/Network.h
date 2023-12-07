@@ -26,6 +26,7 @@ public:
     ~Network();
     void process();
     void removePeer(uint32_t peer_id);
+    void informShutdown();
     PacketHandler packet_handler;
     std::unordered_map<std::string, ENetPeer *> peers;
     std::string server_address;

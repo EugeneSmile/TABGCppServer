@@ -67,6 +67,11 @@ void Network::removePeer(uint32_t peer)
     }
 }
 
+void Network::informShutdown()
+{
+    packet_handler.doRequest(ClientEventCode::ServerShutDown);
+}
+
 void Network::process()
 {
     float poll_time_ratio = Config::getValue("poll_time_ratio", 0.2, "Server");

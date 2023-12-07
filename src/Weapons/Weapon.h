@@ -8,9 +8,8 @@
 struct Weapon
 {
     uint32_t type;
-    uint32_t count;
-    Vector3f location;
-    Weapon(uint32_t type, uint32_t count, Vector3f location);
+    uint32_t quantity;
+    Vector3f position;
 };
 
 #endif

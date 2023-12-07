@@ -7,6 +7,8 @@
 #include "ServerPtr.h"
 #include "Weapon.h"
 
+constexpr uint32_t MAX_WEAPON_ID = 340;
+
 class Weapons : public ServerPtr
 {
 private:

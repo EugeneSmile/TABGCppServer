@@ -10,7 +10,10 @@ Responses::Responses()
     function[ClientEventCode::RequestWorldState] = std::bind(&Responses::worldState, this, std::placeholders::_1);
     function[ClientEventCode::PlayerUpdate] = std::bind(&Responses::playerUpdate, this, std::placeholders::_1);
     function[ClientEventCode::PlayerFire] = std::bind(&Responses::playerFire, this, std::placeholders::_1);
+    function[ClientEventCode::PlayerLand] = std::bind(&Responses::playerLand, this, std::placeholders::_1);
     function[ClientEventCode::RequestAirplaneDrop] = std::bind(&Responses::airplaneDrop, this, std::placeholders::_1);
+    function[ClientEventCode::ChatMessage] = std::bind(&Responses::chatMessage, this, std::placeholders::_1);
+    function[ClientEventCode::ThrowChatMessage] = std::bind(&Responses::throwChatMessage, this, std::placeholders::_1);
 }
 
 void Responses::initRoom(ENetEvent *event)
@@ -46,9 +49,9 @@ void Responses::initRoom(ENetEvent *event)
     payload.player_game_id = player->service.game_index;
     payload.group_game_id = server->groups->addPlayerToGroup(data);
 
-    server->network->packet_handler.doRequest(ClientEventCode::RoomInitRequestResponse, static_cast<void *>(&payload), event->peer);
+    server->network->packet_handler.doRequest(ClientEventCode::RoomInitRequestResponse, reinterpret_cast<void *>(&payload), event->peer);
 
-    server->network->packet_handler.doRequest(ClientEventCode::Login, static_cast<void *>(&player->service.playfab_id), server->network->peers[player->service.playfab_id]);
+    server->network->packet_handler.doRequest(ClientEventCode::Login, reinterpret_cast<void *>(&player->service.playfab_id), server->network->peers[player->service.playfab_id]);
 
     Logger::log->debug("Login of player '{}', login key '{}', playfab id {}, game id {}", player->service.name, player->service.session_id, player->service.playfab_id, player->service.game_index);
 }
@@ -57,7 +60,7 @@ void Responses::worldState(ENetEvent *event)
 {
     Buffer response = Buffer(event->packet->data, event->packet->dataLength);
     std::string *player_playfab_id = &server->players->findPlayer(response.read<uint8_t>())->service.playfab_id;
-    server->network->packet_handler.doRequest(ClientEventCode::Login, static_cast<void *>(player_playfab_id));
+    server->network->packet_handler.doRequest(ClientEventCode::Login, reinterpret_cast<void *>(player_playfab_id));
 }
 
 void Responses::playerUpdate(ENetEvent *event)
@@ -88,7 +91,7 @@ void Responses::airplaneDrop(ENetEvent *event)
     auto player = server->players->findPlayer(response.read<uint8_t>());
     player->game.direction = response.read<Vector3f>();
     // ToDo - find proper place for request
-    server->network->packet_handler.doRequest(ClientEventCode::PlayerAirplaneDropped, static_cast<void *>(&player->service.game_index));
+    server->network->packet_handler.doRequest(ClientEventCode::PlayerAirplaneDropped, reinterpret_cast<void *>(&player->service.game_index));
 }
 
 void Responses::playerLand(ENetEvent *event)
@@ -96,6 +99,7 @@ void Responses::playerLand(ENetEvent *event)
     Buffer response = Buffer(event->packet->data, event->packet->dataLength);
     auto player = server->players->findPlayer(response.read<uint8_t>());
     player->game.position = response.read<Vector3f>();
+    server->network->packet_handler.doRequest(ClientEventCode::PlayerRegMessage, reinterpret_cast<void *>(&player->service.game_index));
 }
 
 void Responses::ringDeath(ENetEvent *event)
@@ -151,6 +155,12 @@ void Responses::chatMessage(ENetEvent *event)
 {
     Buffer response = Buffer(event->packet->data, event->packet->dataLength);
     server->network->packet_handler.doRequest(ClientEventCode::ChatMessage, &response);
+}
+
+void Responses::throwChatMessage(ENetEvent *event)
+{
+    Buffer response = Buffer(event->packet->data, event->packet->dataLength);
+    server->network->packet_handler.doRequest(ClientEventCode::ThrowChatMessage, &response);
 }
 
 void Responses::reviveState(ENetEvent *event)

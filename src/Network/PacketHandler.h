@@ -13,6 +13,14 @@
 #include "Requests.h"
 #include "Responses.h"
 
+struct BroadcastData
+{
+    std::string name;
+    ClientEventCode code;
+    void *ctx = nullptr;
+    ENetPeer *peer = nullptr;
+};
+
 class Buffer;
 class PacketHandler : public ServerPtr
 {
@@ -20,7 +28,7 @@ private:
     Requests requests;
     Responses responses;
 
-    std::vector<ClientEventCode> periodic_broadcast_codes;
+    std::vector<BroadcastData> broadcasts;
 
     std::vector<ClientEventCode> packet_log_filter;
     void logPacket(const uint8_t *data, const size_t size, const std::string &header);
@@ -31,6 +39,8 @@ public:
     void handleRequest(ENetPeer *peer, ClientEventCode code, Buffer *buffer, bool reliable);
     void doBroadcasts();
     void doRequest(ClientEventCode code, void *ctx = nullptr, ENetPeer *peer = nullptr);
+    void registerBroadcast(const std::string &name, ClientEventCode code, void *ctx = nullptr, ENetPeer *peer = nullptr);
+    void unregisterBroadcast(const std::string &name);
 };
 
 #endif

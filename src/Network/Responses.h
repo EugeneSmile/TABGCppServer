@@ -31,6 +31,7 @@ public:
     void clickInteract(ENetEvent *event);
     void healthState(ENetEvent *event);
     void chatMessage(ENetEvent *event);
+    void throwChatMessage(ENetEvent *event);
     void reviveState(ENetEvent *event);
     void markerChange(ENetEvent *event);
 };

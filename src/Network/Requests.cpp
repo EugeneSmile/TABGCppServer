@@ -6,15 +6,26 @@
 
 Requests::Requests()
 {
+    function[ClientEventCode::ServerShutDown] = std::bind(&Requests::serverShutdown, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::RoomInitRequestResponse] = std::bind(&Requests::initRoom, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::Login] = std::bind(&Requests::login, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::PlayerLeft] = std::bind(&Requests::playerLeft, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::PlayerRespawn] = std::bind(&Requests::playerRespawn, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::PlayerUpdate] = std::bind(&Requests::playerUpdate, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::PlayerFire] = std::bind(&Requests::playerFire, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::GameStateChanged] = std::bind(&Requests::gameStateChanged, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::WeaponPickUpAccepted] = std::bind(&Requests::weaponPickup, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::PlayerAirplaneDropped] = std::bind(&Requests::airplaneDrop, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::ChatMessage] = std::bind(&Requests::chatMessage, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::ThrowChatMessage] = std::bind(&Requests::throwChatMessage, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::SpawnGun] = std::bind(&Requests::spawnGun, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::RingUpdate] = std::bind(&Requests::ringUpdate, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::PlayerRegMessage] = std::bind(&Requests::startRegisterDamage, this, std::placeholders::_1, std::placeholders::_2);
+}
+
+void Requests::serverShutdown(void *ctx, ENetPeer *peer)
+{
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::ServerShutDown, nullptr, true);
 }
 
 void Requests::initRoom(void *ctx, ENetPeer *peer)
@@ -24,8 +35,8 @@ void Requests::initRoom(void *ctx, ENetPeer *peer)
     request.write(ServerResponse::Accepted);
     request.write(GameMode::BattleRoyale);
     request.write(uint8_t(0));
-    request.write(static_cast<NInitRoom *>(ctx)->player_game_id);
-    request.write(static_cast<NInitRoom *>(ctx)->group_game_id);
+    request.write(reinterpret_cast<NInitRoom *>(ctx)->player_game_id);
+    request.write(reinterpret_cast<NInitRoom *>(ctx)->group_game_id);
     request.write<std::string>(server->preferences->name);
 
     server->network->packet_handler.handleRequest(peer, ClientEventCode::RoomInitRequestResponse, &request, true);
@@ -33,7 +44,7 @@ void Requests::initRoom(void *ctx, ENetPeer *peer)
 
 void Requests::login(void *ctx, ENetPeer *peer)
 {
-    auto player = server->players->findPlayer(*static_cast<std::string *>(ctx));
+    auto player = server->players->findPlayer(*reinterpret_cast<std::string *>(ctx));
 
     Buffer request = Buffer(4096);
 
@@ -62,7 +73,6 @@ void Requests::login(void *ctx, ENetPeer *peer)
             request.write<std::string>(other_player.service.name);
             // weapon (?)
             request.write(uint32_t(0));
-            // array size (?)
             request.write(other_player.service.gear_length);
             for (size_t i = 0; i < other_player.service.gear_length; ++i)
                 request.write(other_player.service.gear[i]);
@@ -80,9 +90,9 @@ void Requests::login(void *ctx, ENetPeer *peer)
             // uniqueIdentifier (?) - uint32
             request.write(weapon.type);
             // quantity (?) - uint32
-            request.write(weapon.count);
+            request.write(weapon.quantity);
             // spawn
-            request.write(weapon.location);
+            request.write(weapon.position);
         }
 
         // Cars
@@ -105,12 +115,9 @@ void Requests::login(void *ctx, ENetPeer *peer)
             }
         }
 
-        // time of day
-        request.write(float(0));
-        // seconds to first ring
-        request.write(float(1000));
-        // base ring time
-        request.write(float(1000));
+        request.write(server->game->daytime);
+        request.write(server->game->preparation_time);
+        request.write(server->game->ring_time);
 
         // (?) need to clarify
         uint8_t some_index = 0;
@@ -123,7 +130,6 @@ void Requests::login(void *ctx, ENetPeer *peer)
 
         request.write(server->preferences->lives);
         request.write(server->preferences->kills);
-        // Need to implement game state
         request.write(server->game->state);
         if (server->game->state == GameState::CountDown)
             request.write(server->game->getCountdownCounter());
@@ -186,7 +192,7 @@ void Requests::playerUpdate(void *ctx, ENetPeer *peer)
                     request.write(player.game.rotation);
                 request.write(player.game.aim_down_sight);
                 if (packet_flags & PacketContainerFlags::PlayerDirection || packet_flags == PacketContainerFlags::All)
-                    request.write(player.game.direction);
+                    request.write(convertFloatToUInt8(player.game.direction));
                 request.write(player.game.movement_type);
             }
             else
@@ -212,9 +218,51 @@ void Requests::playerUpdate(void *ctx, ENetPeer *peer)
 void Requests::playerLeft(void *ctx, ENetPeer *peer)
 {
     Buffer request = Buffer(3);
-    request.write(static_cast<NPlayerLeft *>(ctx)->player_game_id);
-    request.write(static_cast<NPlayerLeft *>(ctx)->player_destroy);
+    request.write(reinterpret_cast<NPlayerLeft *>(ctx)->player_game_id);
+    request.write(reinterpret_cast<NPlayerLeft *>(ctx)->player_destroy);
     server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerLeft, &request, true);
+}
+
+void Requests::playerRespawn(void *ctx, ENetPeer *peer)
+{
+    std::vector<uint8_t> *player_ids = reinterpret_cast<std::vector<uint8_t> *>(ctx);
+    Buffer request = Buffer(2 + 23 * player_ids->size());
+    request.write(static_cast<uint8_t>(player_ids->size()));
+    for (auto player_id : *player_ids)
+    {
+        auto player = server->players->findPlayer(player_id);
+        request.write(player->service.game_index);
+        // New index (let be the same now)
+        request.write(player->service.game_index);
+        request.write(player->game.health);
+        request.write(player->game.position);
+        request.write(player->game.rotation.x);
+        request.write(player->game.curse_id);
+    }
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerRespawn, &request, true);
+}
+
+void Requests::playerFire(void *ctx, ENetPeer *peer)
+{
+    Buffer request = Buffer(31);
+    uint8_t player_id = *reinterpret_cast<uint8_t *>(ctx);
+    auto player = server->players->findPlayer(player_id);
+    request.write(player->service.game_index);
+    request.write(player->game.firing.mode);
+    request.write(uint32_t(0));
+    if (player->game.firing.mode & FiringMode::ContainsDirection)
+    {
+        request.write(player->game.position);
+        // ToDo
+        Quaternion quat = Quaternion(4);
+        request.write<Quaternion>(quat);
+    }
+    // ToDo: Sync Index
+    if (player->game.firing.mode & FiringMode::WantsToBeSynced)
+        request.write(uint32_t(0));
+    if (player->game.firing.mode & FiringMode::UseBulletEffect)
+        request.write(player->game.firing.bullet_effect);
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerFire, &request, true);
 }
 
 void Requests::gameStateChanged(void *ctx, ENetPeer *peer)
@@ -236,7 +284,7 @@ void Requests::gameStateChanged(void *ctx, ENetPeer *peer)
 
     case GameState::Ended:
         // ToDo: winning group
-        request.write(*static_cast<uint8_t *>(ctx));
+        request.write(*reinterpret_cast<uint8_t *>(ctx));
         break;
 
     default:
@@ -249,13 +297,13 @@ void Requests::gameStateChanged(void *ctx, ENetPeer *peer)
 void Requests::weaponPickup(void *ctx, ENetPeer *peer)
 {
     Buffer request = Buffer(15);
-    request.write(*static_cast<NWeaponPickup *>(ctx));
+    request.write(*reinterpret_cast<NWeaponPickup *>(ctx));
 }
 
 void Requests::airplaneDrop(void *ctx, ENetPeer *peer)
 {
     Buffer request = Buffer(26);
-    auto player_id = *static_cast<uint8_t *>(ctx);
+    auto player_id = *reinterpret_cast<uint8_t *>(ctx);
     auto player = server->players->findPlayer(player_id);
     request.write(player_id);
     request.write(player->game.position);
@@ -265,7 +313,22 @@ void Requests::airplaneDrop(void *ctx, ENetPeer *peer)
 
 void Requests::chatMessage(void *ctx, ENetPeer *peer)
 {
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::ChatMessage, static_cast<Buffer *>(ctx), true);
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::ChatMessage, reinterpret_cast<Buffer *>(ctx), true);
+}
+
+void Requests::throwChatMessage(void *ctx, ENetPeer *peer)
+{
+    Buffer *response = reinterpret_cast<Buffer *>(ctx);
+    uint8_t player_id = response->read<uint8_t>();
+    std::string message = response->read<std::string>();
+
+    auto player = server->players->findPlayer(player_id);
+
+    Buffer request = Buffer(5 * sizeof(float) + 2 * sizeof(uint8_t) + message.size());
+    request.write(player_id);
+    request.write(player->game.position);
+    request.write(player->game.direction);
+    request.write<std::string>(message);
 }
 
 void Requests::spawnGun(void *ctx, ENetPeer *peer)
@@ -277,4 +340,32 @@ void Requests::spawnGun(void *ctx, ENetPeer *peer)
     request.write(float(100));
     request.write(float(0));
     server->network->packet_handler.handleRequest(peer, ClientEventCode::SpawnGun, &request, true);
+}
+
+void Requests::ringUpdate(void *ctx, ENetPeer *peer)
+{
+    Buffer request = Buffer(19);
+    Ring *ring = reinterpret_cast<Ring *>(ctx);
+    request.write(static_cast<uint8_t>(ring->data_type));
+    switch (ring->data_type)
+    {
+    default:
+    case RingDataType::FlyingTime:
+        request.write(ring->travelled_time);
+        break;
+
+    case RingDataType::NextRingData:
+        request.write(ring->index);
+        request.write(ring->center);
+        request.write(ring->radius);
+        break;
+    }
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::RingUpdate, &request, true);
+}
+
+void Requests::startRegisterDamage(void *ctx, ENetPeer *peer)
+{
+    Buffer request = Buffer(2);
+    request.write(*reinterpret_cast<uint8_t *>(ctx));
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerRegMessage, &request, true);
 }

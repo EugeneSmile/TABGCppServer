@@ -8,6 +8,10 @@
 #include "Types.h"
 #include "Enums.h"
 
+constexpr uint8_t INVENTORY_SIZE = 16;
+constexpr uint8_t BLESSINGS_SIZE = 3;
+constexpr uint8_t THROWABLES_SIZE = 3;
+
 enum class MovementType
 {
     NoFlags = 0x0,
@@ -53,18 +57,22 @@ struct PlayerServiceData
 struct PlayerGameData
 {
     float health{100};
-    // Vector3f position{420, 135, 460};
-    Vector3f position{0, 135, 0};
+    Vector2i8 chunk{0, 0};
+    Vector3f position{420, 135, 460};
+    // Vector3f position{0, 135, 0};
     Vector2f rotation{0, 0};
     Vector3f direction{0, 0, 0};
     bool aim_down_sight{false};
     MovementType movement_type{MovementType::NoFlags};
     std::unordered_map<MarkerType, Marker> markers{{MarkerType::Marker, {}}, {MarkerType::Ping, {}}};
+    bool flying{false};
+    uint8_t curse_id{UINT8_MAX};
     struct Firing
     {
         FiringMode mode{FiringMode::None};
         uint32_t ammo_type;
         std::vector<uint8_t> extra_data;
+        BulletEffectType bullet_effect{BulletEffectType::Nothing};
     } firing;
     struct Driving
     {

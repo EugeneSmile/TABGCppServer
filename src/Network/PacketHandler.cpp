@@ -10,8 +10,8 @@
 
 PacketHandler::PacketHandler()
 {
-    periodic_broadcast_codes = {
-        ClientEventCode::PlayerUpdate};
+    broadcasts = {
+        {"PlayersUpdate", ClientEventCode::PlayerUpdate, nullptr, nullptr}};
 
     // packet_log_filter = {ClientEventCode::RoomInit, ClientEventCode::Login, ClientEventCode::PlayerLeft, ClientEventCode::RequestAirplaneDrop, ClientEventCode::PlayerAirplaneDropped};
     packet_log_filter = {ClientEventCode::PlayerUpdate};
@@ -27,8 +27,8 @@ void PacketHandler::logPacket(const uint8_t *data, const size_t size, const std:
 
 void PacketHandler::doBroadcasts()
 {
-    for (auto code : periodic_broadcast_codes)
-        requests.function[code](nullptr, nullptr);
+    for (auto broadcast : broadcasts)
+        requests.function[broadcast.code](broadcast.ctx, broadcast.peer);
 }
 
 void PacketHandler::doRequest(ClientEventCode code, void *ctx, ENetPeer *peer)
@@ -38,6 +38,12 @@ void PacketHandler::doRequest(ClientEventCode code, void *ctx, ENetPeer *peer)
 
 void PacketHandler::handleRequest(ENetPeer *peer, ClientEventCode code, Buffer *buffer, bool reliable)
 {
+    bool create_buffer = false;
+    if (buffer == nullptr)
+    {
+        buffer = new Buffer(1);
+        create_buffer = true;
+    }
     buffer->setClientEventCode(code);
     ENetPacket *packet = enet_packet_create(*buffer, buffer->getUsedSize(), (reliable ? ENetPacketFlag::ENET_PACKET_FLAG_RELIABLE : 0));
     if (peer == nullptr)
@@ -63,6 +69,9 @@ void PacketHandler::handleRequest(ENetPeer *peer, ClientEventCode code, Buffer *
             logPacket(buffer->getData(), buffer->getUsedSize(), "SENDP");
         }
     }
+
+    if (create_buffer)
+        delete buffer;
 }
 
 void PacketHandler::handleResponce(ENetEvent *event)
@@ -79,4 +88,18 @@ void PacketHandler::handleResponce(ENetEvent *event)
 
     if (responses.function.contains(code))
         responses.function[code](event);
+    else
+        Logger::log->warn("Received not implemented response: {}", magic_enum::enum_name(code));
+}
+
+void PacketHandler::registerBroadcast(const std::string &name, ClientEventCode code, void *ctx, ENetPeer *peer)
+{
+    broadcasts.push_back({name, code, ctx, peer});
+}
+
+void PacketHandler::unregisterBroadcast(const std::string &name)
+{
+    for (std::vector<BroadcastData>::iterator it = broadcasts.begin(); it != broadcasts.end(); ++it)
+        if (it->name == name)
+            broadcasts.erase(it);
 }

@@ -258,6 +258,13 @@ enum class WeaponType
     Blessing
 };
 
+enum class BulletEffectType
+{
+    Nothing,
+    GoodBeat,
+    BadBeat
+};
+
 enum class MarkerType
 {
     Ping,
