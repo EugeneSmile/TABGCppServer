@@ -10,3 +10,6 @@
 [submodule "libs/magic_enum"]
 	path = libs/magic_enum
 	url = https://github.com/Neargye/magic_enum.git
+[submodule "libs/imtui"]
+	path = libs/imtui
+	url = https://github.com/ggerganov/imtui.git

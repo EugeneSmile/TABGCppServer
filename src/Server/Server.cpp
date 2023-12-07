@@ -15,6 +15,8 @@ std::shared_ptr<Server> Server::getPointer()
 
 void Server::init()
 {
+    timepoint_start = std::chrono::high_resolution_clock::now();
+
     preferences = std::make_shared<Preferences>();
     network = std::make_shared<Network>();
     game = std::make_shared<Game>();
@@ -22,6 +24,9 @@ void Server::init()
     groups = std::make_shared<Groups>();
     weapons = std::make_shared<Weapons>();
     cars = std::make_shared<Cars>();
+#ifdef ENABLE_TUI
+    tui = std::make_shared<Tui>();
+#endif
 
     Logger::log->set_level(static_cast<spdlog::level::level_enum>(Config::getValue("level", 2, "Log")));
 
@@ -30,6 +35,9 @@ void Server::init()
 
 void Server::deinit()
 {
+#ifdef ENABLE_TUI
+    tui.reset();
+#endif
     cars.reset();
     weapons.reset();
     groups.reset();
@@ -55,6 +63,10 @@ void Server::restart()
 
 void Server::run()
 {
+#ifdef ENABLE_TUI
+    tui->start();
+#endif
+
     while (*active)
     {
         std::chrono::high_resolution_clock::time_point tick_start = std::chrono::high_resolution_clock::now();
@@ -62,7 +74,7 @@ void Server::run()
         game->tick();
         network->process();
 
-        std::chrono::nanoseconds tick_duration = std::chrono::high_resolution_clock::now() - tick_start;
+        tick_duration = std::chrono::high_resolution_clock::now() - tick_start;
         if (tick_duration < preferences->tick_time)
             std::this_thread::sleep_for(preferences->tick_time - tick_duration);
         else

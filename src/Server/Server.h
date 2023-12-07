@@ -15,14 +15,17 @@
 #include "Network.h"
 #include "Preferences.h"
 #include "Game.h"
+#ifdef ENABLE_TUI
+#include "Tui.h"
+#endif
 
 class Server : public std::enable_shared_from_this<Server>
 {
 private:
     void run();
-    std::shared_ptr<bool> active;
 
 public:
+    std::shared_ptr<bool> active;
     std::shared_ptr<Preferences> preferences;
     std::shared_ptr<Game> game;
     std::shared_ptr<Network> network;
@@ -30,7 +33,11 @@ public:
     std::shared_ptr<Groups> groups;
     std::shared_ptr<Weapons> weapons;
     std::shared_ptr<Cars> cars;
-
+#ifdef ENABLE_TUI
+    std::shared_ptr<Tui> tui;
+#endif
+    std::chrono::nanoseconds tick_duration;
+    std::chrono::high_resolution_clock::time_point timepoint_start;
     void experimental_init();
 
     Server() = default;
