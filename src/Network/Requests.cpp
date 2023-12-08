@@ -116,8 +116,8 @@ void Requests::login(void *ctx, ENetPeer *peer)
         }
 
         request.write(server->game->daytime);
-        request.write(server->game->preparation_time);
-        request.write(server->game->ring_time);
+        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->preparation_time.count());
+        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->ring_time.count());
 
         // (?) need to clarify
         uint8_t some_index = 0;
@@ -132,13 +132,13 @@ void Requests::login(void *ctx, ENetPeer *peer)
         request.write(server->preferences->kills);
         request.write(server->game->state);
         if (server->game->state == GameState::CountDown)
-            request.write(server->game->getCountdownCounter());
+            request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->flight_time.count());
         if (server->game->state == GameState::Flying || server->game->state == GameState::Started)
         {
             // (?) not clear boolean
             request.write(bool(true));
-            request.write(server->game->plane.start);
-            request.write(server->game->plane.finish);
+            request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start);
+            request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish);
         }
     }
     else
@@ -272,12 +272,12 @@ void Requests::gameStateChanged(void *ctx, ENetPeer *peer)
     switch (server->game->state)
     {
     case GameState::CountDown:
-        request.write(server->game->countdown_time);
+        request.write(std::dynamic_pointer_cast<Countdown>(server->game->phases.at(GameState::CountDown))->countdown_time.count());
         break;
 
     case GameState::Flying:
-        request.write(server->game->plane.start);
-        request.write(server->game->plane.finish);
+        request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start);
+        request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish);
         request.write(server->game->daytime);
         request.write(server->game->modifier);
         break;

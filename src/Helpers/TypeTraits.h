@@ -37,4 +37,7 @@ concept IsCustomStruct = IsAnyOf<T, NWeaponPickup>;
 template <typename T>
 concept IsQuaternion = IsAnyOf<T, Quaternion, const Quaternion>;
 
+template <typename T>
+concept IsTime = IsAnyOf<T, std::chrono::microseconds, std::chrono::milliseconds, std::chrono::seconds, std::chrono::minutes>;
+
 #endif

@@ -12,6 +12,7 @@ private:
     crow::json::wvalue getServerList(const crow::request &request);
     crow::json::wvalue getServerInfo(const crow::request &request);
     crow::json::wvalue getServerData(const crow::request &request);
+    crow::response setServerData(const crow::request &request);
     crow::App<crow::CORSHandler> app;
     std::future<void> app_future;
 

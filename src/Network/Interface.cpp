@@ -27,6 +27,7 @@ Interface::Interface(/* args */)
     CROW_ROUTE(app, "/GetServerInfo").methods(crow::HTTPMethod::POST)(std::bind(&Interface::getServerInfo, this, std::placeholders::_1));
 
     CROW_ROUTE(app, "/GetServerData").methods(crow::HTTPMethod::POST)(std::bind(&Interface::getServerData, this, std::placeholders::_1));
+    CROW_ROUTE(app, "/SetServerData").methods(crow::HTTPMethod::POST)(std::bind(&Interface::setServerData, this, std::placeholders::_1));
 
     const std::string interface_address = Config::getValue("address", "0.0.0.0", "Interface");
     const int64_t interface_port = Config::getValue("port", 3010, "Interface");
@@ -92,20 +93,20 @@ crow::json::wvalue Interface::getServerData(const crow::request &request)
     crow::json::wvalue ret;
 
     ret["game"]["state"] = static_cast<int64_t>(server->game->state);
-    ret["game"]["current_ring_index"] = server->game->current_ring_index;
-    ret["game"]["plane"]["start"]["x"] = server->game->plane.start.x;
-    ret["game"]["plane"]["start"]["y"] = server->game->plane.start.y;
-    ret["game"]["plane"]["start"]["z"] = server->game->plane.start.z;
-    ret["game"]["plane"]["finish"]["x"] = server->game->plane.finish.x;
-    ret["game"]["plane"]["finish"]["y"] = server->game->plane.finish.y;
-    ret["game"]["plane"]["finish"]["z"] = server->game->plane.finish.z;
-    for (size_t i = 0; i < server->game->number_of_rings; ++i)
+    ret["game"]["current_ring_index"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->current_ring_index;
+    ret["game"]["plane"]["start"]["x"] = std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start.x;
+    ret["game"]["plane"]["start"]["y"] = std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start.y;
+    ret["game"]["plane"]["start"]["z"] = std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start.z;
+    ret["game"]["plane"]["finish"]["x"] = std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish.x;
+    ret["game"]["plane"]["finish"]["y"] = std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish.y;
+    ret["game"]["plane"]["finish"]["z"] = std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish.z;
+    for (size_t i = 0; i < std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->number_of_rings; ++i)
     {
-        ret["game"]["rings"][i]["radius"] = server->game->rings[i].radius;
-        ret["game"]["rings"][i]["travelled_time"] = server->game->rings[i].travelled_time;
-        ret["game"]["rings"][i]["center"]["x"] = server->game->rings[i].center.x;
-        ret["game"]["rings"][i]["center"]["y"] = server->game->rings[i].center.y;
-        ret["game"]["rings"][i]["center"]["z"] = server->game->rings[i].center.z;
+        ret["game"]["rings"][i]["radius"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].radius;
+        ret["game"]["rings"][i]["travelled_time"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].travelled_time;
+        ret["game"]["rings"][i]["center"]["x"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].center.x;
+        ret["game"]["rings"][i]["center"]["y"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].center.y;
+        ret["game"]["rings"][i]["center"]["z"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].center.z;
     }
 
     for (auto player : server->players->players)
@@ -139,4 +140,18 @@ crow::json::wvalue Interface::getServerData(const crow::request &request)
         ret["players"][player.service.game_index]["driving_state"] = static_cast<int64_t>(player.game.driving.state);
     }
     return ret;
+}
+
+crow::response Interface::setServerData(const crow::request &request)
+{
+    auto req = crow::json::load(request.body);
+    if (!req)
+        return crow::response(400);
+
+    for (auto &key : req.keys())
+    {
+        if (key == "game_state")
+            server->game->changeState(static_cast<GameState>(req[key].i()));
+    }
+    return crow::response(200);
 }

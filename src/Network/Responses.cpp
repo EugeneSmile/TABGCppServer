@@ -52,7 +52,7 @@ void Responses::initRoom(ENetEvent *event)
 
     server->network->packet_handler.doRequest(ClientEventCode::RoomInitRequestResponse, reinterpret_cast<void *>(&payload), event->peer);
 
-    server->network->packet_handler.doRequest(ClientEventCode::Login, reinterpret_cast<void *>(&player->service.playfab_id), server->network->peers[player->service.playfab_id]);
+    server->network->packet_handler.doRequest(ClientEventCode::Login, reinterpret_cast<void *>(&player->service.playfab_id), server->network->peers.at(player->service.playfab_id));
 
     Logger::log->debug("Login of player '{}', login key '{}', playfab id {}, game id {}", player->service.name, player->service.session_id, player->service.playfab_id, player->service.game_index);
 }
@@ -84,6 +84,7 @@ void Responses::playerFire(ENetEvent *event)
     player->game.firing.extra_data.resize(response.getRemainSize());
     for (size_t i = 0; i < response.getRemainSize(); ++i)
         player->game.firing.extra_data[i] = response.read<uint8_t>();
+    server->network->packet_handler.doRequest(ClientEventCode::PlayerFire, reinterpret_cast<void *>(&player->service.game_index));
 }
 
 void Responses::airplaneDrop(ENetEvent *event)
