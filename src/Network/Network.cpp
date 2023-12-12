@@ -113,5 +113,6 @@ void Network::process()
     }
 
     cleaner.tick();
-    packet_handler.doBroadcasts();
+    if (!peers.empty())
+        packet_handler.doBroadcasts();
 }

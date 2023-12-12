@@ -6,9 +6,8 @@
 
 #include "Chunk.h"
 #include "Types.h"
+#include "Constants.h"
 #include "GeneralHelper.h"
-
-constexpr Vector2u16 CHUNK_SIZE = {256, 256};
 
 class Chunks
 {

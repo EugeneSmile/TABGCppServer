@@ -1,6 +1,8 @@
 #ifndef GAME_RING_H_GUARD
 #define GAME_RING_H_GUARD
 
+#include <chrono>
+
 #include "Types.h"
 
 enum class RingDataType
@@ -15,8 +17,8 @@ struct Ring
     uint8_t index;
     RingDataType data_type;
     Vector3f center;
-    float radius;
-    float travelled_time;
+    float size;
+    std::chrono::duration<float> travelled_time;
 };
 
 #endif
