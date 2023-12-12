@@ -351,13 +351,13 @@ void Requests::ringUpdate(void *ctx, ENetPeer *peer)
     {
     default:
     case RingDataType::FlyingTime:
-        request.write(ring->travelled_time);
+        request.write(ring->travelled_time.count());
         break;
 
     case RingDataType::NextRingData:
         request.write(ring->index);
         request.write(ring->center);
-        request.write(ring->radius);
+        request.write(ring->size);
         break;
     }
     server->network->packet_handler.handleRequest(peer, ClientEventCode::RingUpdate, &request, true);

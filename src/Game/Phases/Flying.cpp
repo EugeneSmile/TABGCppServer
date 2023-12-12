@@ -4,7 +4,7 @@
 
 #include "Logger.h"
 
-Flying::Flying(/* args */) : flight_time(std::chrono::duration<float>(45))
+Flying::Flying(/* args */) : flight_time(std::chrono::duration<float>(15))
 {
     randomizePlane();
 }
