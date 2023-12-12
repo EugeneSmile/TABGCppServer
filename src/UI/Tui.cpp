@@ -75,11 +75,11 @@ void Tui::loop()
         ImGui::NewLine();
         ImGui::Text("Players: %d/%d", server->players->players.size(), server->preferences->max_players);
         ImGui::Text("Game state: %s", std::string(magic_enum::enum_name(server->game->state)).c_str());
-        ImGui::Text("Number of rings: %d", server->game->number_of_rings);
-        for (size_t i = 0; i < server->game->rings.size(); ++i)
+        ImGui::Text("Number of rings: %d", std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->number_of_rings);
+        for (size_t i = 0; i < std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.size(); ++i)
         {
-            auto &ring = server->game->rings[i];
-            ImGui::Text("Ring %d Size: %f x: %f z: %f tt: %f", i, ring.radius, ring.center.x, ring.center.z, ring.travelled_time);
+            auto &ring = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.at(i);
+            ImGui::Text("Ring %d Size: %f x: %f z: %f tt: %f", i, ring.size, ring.center.x, ring.center.z, ring.travelled_time);
         }
         ImGui::NewLine();
         ImGui::End();
