@@ -18,7 +18,7 @@ struct Ring
     RingDataType data_type;
     Vector3f center;
     float size;
-    std::chrono::duration<float> travelled_time;
+    std::chrono::duration<float> travel_time;
 };
 
 #endif

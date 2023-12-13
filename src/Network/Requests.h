@@ -30,6 +30,7 @@ public:
     void spawnGun(void *ctx = nullptr, ENetPeer *peer = nullptr);
     void ringUpdate(void *ctx = nullptr, ENetPeer *peer = nullptr);
     void startRegisterDamage(void *ctx = nullptr, ENetPeer *peer = nullptr);
+    void planeUpdate(void *ctx = nullptr, ENetPeer *peer = nullptr);
 };
 
 #endif

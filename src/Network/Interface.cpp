@@ -103,7 +103,7 @@ crow::json::wvalue Interface::getServerData(const crow::request &request)
     for (size_t i = 0; i < std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->number_of_rings; ++i)
     {
         ret["game"]["rings"][i]["radius"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].size;
-        ret["game"]["rings"][i]["travelled_time"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].travelled_time.count();
+        ret["game"]["rings"][i]["travelled_time"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].travel_time.count();
         ret["game"]["rings"][i]["center"]["x"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].center.x;
         ret["game"]["rings"][i]["center"]["y"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].center.y;
         ret["game"]["rings"][i]["center"]["z"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].center.z;

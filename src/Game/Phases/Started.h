@@ -20,8 +20,8 @@ private:
 
 public:
     Started(/* args */);
-    std::chrono::duration<float> preparation_time;
-    std::chrono::duration<float> ring_time;
+    std::chrono::duration<float> ring_spawn_delay;
+    std::chrono::duration<float> ring_base_time;
     Timer ring_timer;
     std::vector<Ring> rings;
     Ring *current_ring;

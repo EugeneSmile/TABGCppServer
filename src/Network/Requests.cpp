@@ -21,6 +21,7 @@ Requests::Requests()
     function[ClientEventCode::SpawnGun] = std::bind(&Requests::spawnGun, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::RingUpdate] = std::bind(&Requests::ringUpdate, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::PlayerRegMessage] = std::bind(&Requests::startRegisterDamage, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::PlaneUpdate] = std::bind(&Requests::planeUpdate, this, std::placeholders::_1, std::placeholders::_2);
 }
 
 void Requests::serverShutdown(void *ctx, ENetPeer *peer)
@@ -77,7 +78,6 @@ void Requests::login(void *ctx, ENetPeer *peer)
             for (size_t i = 0; i < other_player.service.gear_length; ++i)
                 request.write(other_player.service.gear[i]);
             request.write(other_player.service.dev);
-            // color
             request.write(other_player.service.color);
         }
 
@@ -116,16 +116,17 @@ void Requests::login(void *ctx, ENetPeer *peer)
         }
 
         request.write(server->game->daytime);
-        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->preparation_time.count());
-        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->ring_time.count());
+        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->ring_spawn_delay.count());
+        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->ring_base_time.count());
 
         // (?) need to clarify
-        uint8_t some_index = 0;
-        request.write(some_index);
-        for (size_t i = 0; i < some_index; ++i)
+        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.size());
+        for (size_t i = 0; i < std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.size(); ++i)
         {
-            request.write(float(10));
-            request.write(float(20));
+            // Ring sizes
+            request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.at(i).size);
+            // Ring travel time
+            request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.at(i).travel_time.count());
         }
 
         request.write(server->preferences->lives);
@@ -136,7 +137,7 @@ void Requests::login(void *ctx, ENetPeer *peer)
         if (server->game->state == GameState::Flying || server->game->state == GameState::Started)
         {
             // (?) not clear boolean
-            request.write(bool(true));
+            request.write(server->game->state == GameState::Flying);
             request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start);
             request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish);
         }
@@ -284,7 +285,7 @@ void Requests::gameStateChanged(void *ctx, ENetPeer *peer)
 
     case GameState::Ended:
         // ToDo: winning group
-        request.write(*reinterpret_cast<uint8_t *>(ctx));
+        request.write(uint8_t(0));
         break;
 
     default:
@@ -351,7 +352,7 @@ void Requests::ringUpdate(void *ctx, ENetPeer *peer)
     {
     default:
     case RingDataType::FlyingTime:
-        request.write(ring->travelled_time.count());
+        request.write(ring->travel_time.count());
         break;
 
     case RingDataType::NextRingData:
@@ -368,4 +369,11 @@ void Requests::startRegisterDamage(void *ctx, ENetPeer *peer)
     Buffer request = Buffer(2);
     request.write(*reinterpret_cast<uint8_t *>(ctx));
     server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerRegMessage, &request, true);
+}
+
+void Requests::planeUpdate(void *ctx, ENetPeer *peer)
+{
+    Buffer request = Buffer(5);
+    request.write(*reinterpret_cast<float *>(ctx));
+    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlaneUpdate, &request, true);
 }

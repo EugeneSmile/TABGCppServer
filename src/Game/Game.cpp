@@ -16,9 +16,9 @@ Game::Game(/* args */)
     phases[GameState::OpenDoors] = std::make_shared<OpenDoors>();
 }
 
-void Game::changeState(GameState state)
+void Game::changeState(GameState state, bool force)
 {
-    if (this->state != state)
+    if (this->state != state || force)
     {
         Logger::log->info("Changing game state from {} to {}", magic_enum::enum_name(this->state), magic_enum::enum_name(state));
         this->state = state;

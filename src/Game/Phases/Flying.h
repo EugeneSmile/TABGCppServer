@@ -18,12 +18,12 @@ private:
     Timer flying_timer;
     void initialize();
     GameState process();
-    void randomizePlane();
 
 public:
     Flying(/* args */);
+    void randomizePlane();
     Plane plane;
-    const std::chrono::duration<float> flight_time;
+    std::chrono::duration<float> flight_time;
 };
 
 #endif

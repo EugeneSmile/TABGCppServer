@@ -10,6 +10,12 @@
 [submodule "libs/magic_enum"]
 	path = libs/magic_enum
 	url = https://github.com/Neargye/magic_enum.git
-[submodule "libs/imtui"]
-	path = libs/imtui
-	url = https://github.com/ggerganov/imtui.git
+[submodule "libs/imgui-SFML/SFML"]
+	path = libs/imgui-SFML/SFML
+	url = https://github.com/SFML/SFML.git
+[submodule "libs/imgui-SFML/imgui-sfml"]
+	path = libs/imgui-SFML/imgui-sfml
+	url = https://github.com/SFML/imgui-sfml.git
+[submodule "libs/imgui-SFML/imgui"]
+	path = libs/imgui-SFML/imgui
+	url = https://github.com/ocornut/imgui.git

@@ -32,7 +32,7 @@ public:
     uint8_t modifier{0};
 
     Game(/* args */);
-    void changeState(GameState state);
+    void changeState(GameState state, bool force = false);
     void tick();
 };
 

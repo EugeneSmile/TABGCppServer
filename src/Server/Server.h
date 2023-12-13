@@ -15,8 +15,8 @@
 #include "Network.h"
 #include "Preferences.h"
 #include "Game.h"
-#ifdef ENABLE_TUI
-#include "Tui.h"
+#ifdef ENABLE_GUI
+#include "Gui.h"
 #endif
 
 class Server : public std::enable_shared_from_this<Server>
@@ -33,8 +33,8 @@ public:
     std::shared_ptr<Groups> groups;
     std::shared_ptr<Weapons> weapons;
     std::shared_ptr<Cars> cars;
-#ifdef ENABLE_TUI
-    std::shared_ptr<Tui> tui;
+#ifdef ENABLE_GUI
+    std::shared_ptr<Gui> gui;
 #endif
     std::chrono::nanoseconds tick_duration;
     std::chrono::high_resolution_clock::time_point timepoint_start;

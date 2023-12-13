@@ -24,19 +24,19 @@ void Server::init()
     groups = std::make_shared<Groups>();
     weapons = std::make_shared<Weapons>();
     cars = std::make_shared<Cars>();
-#ifdef ENABLE_TUI
-    tui = std::make_shared<Tui>();
+#ifdef ENABLE_GUI
+    gui = std::make_shared<Gui>();
 #endif
 
     Logger::log->set_level(static_cast<spdlog::level::level_enum>(Config::getValue("level", 2, "Log")));
 
-    // experimental_init();
+    experimental_init();
 }
 
 void Server::deinit()
 {
-#ifdef ENABLE_TUI
-    tui.reset();
+#ifdef ENABLE_GUI
+    gui.reset();
 #endif
     cars.reset();
     weapons.reset();
@@ -63,8 +63,8 @@ void Server::restart()
 
 void Server::run()
 {
-#ifdef ENABLE_TUI
-    tui->start();
+#ifdef ENABLE_GUI
+    gui->start();
 #endif
 
     while (*active)

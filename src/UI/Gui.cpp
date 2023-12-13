@@ -1,55 +1,61 @@
-#include "Tui.h"
-
-#include <chrono>
+#include "Gui.h"
 
 #include <magic_enum.hpp>
+#include <imgui-SFML.h>
+#include <SFML/Window.hpp>
+#include <SFML/Graphics.hpp>
 
 #include "Server.h"
-#include "Version.h"
 
-Tui::Tui(/* args */)
+Gui::Gui(/* args */)
 {
     windows.server.name = std::string(PROJECT_NAME) + "-" + std::string(VERSION_FULL);
     windows.server.position = {0, 0};
-    windows.server.size = {40, 7};
+    windows.server.size = {300, 150};
 
     windows.game.name = "Game";
     windows.game.position = {windows.server.size.x, 0};
-    windows.game.size = {60, 30};
+    windows.game.size = {400, 400};
 
     windows.players.name = "Players";
     windows.players.position = {windows.server.size.x + windows.game.size.x, 0};
-    windows.players.size = {60, 30};
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    screen = ImTui_ImplNcurses_Init(true);
-    ImTui_ImplText_Init();
+    windows.players.size = {400, 600};
 }
 
-Tui::~Tui()
+Gui::~Gui()
 {
-    ImTui_ImplText_Shutdown();
-    ImTui_ImplNcurses_Shutdown();
-
-    if (thread_tui.joinable())
-        thread_tui.join();
+    if (thread_main_window.joinable())
+        thread_main_window.join();
 }
 
-void Tui::start()
+void Gui::start()
 {
-    thread_tui = std::thread(&Tui::loop, this);
+    thread_main_window = std::thread(&Gui::threadLoop, this);
 }
 
-void Tui::loop()
+void Gui::threadLoop()
 {
+    sf::RenderWindow window(sf::VideoMode(1280, 800), "ImGui + SFML = <3");
+    window.setFramerateLimit(60);
+    if (!ImGui::SFML::Init(window))
+        return;
+
+    sf::Clock deltaClock;
+
     while (*server->active)
     {
-        ImTui_ImplNcurses_NewFrame();
-        ImTui_ImplText_NewFrame();
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            ImGui::SFML::ProcessEvent(window, event);
 
-        ImGui::NewFrame();
+            if (event.type == sf::Event::Closed)
+            {
+                window.close();
+            }
+        }
+
+        ImGui::SFML::Update(window, deltaClock.restart());
 
         // Server window
         ImGui::SetNextWindowPos(windows.server.position, ImGuiCond_Once);
@@ -57,14 +63,20 @@ void Tui::loop()
         ImGui::Begin(windows.server.name.c_str());
         ImGui::NewLine();
         auto server_uptime = std::chrono::high_resolution_clock::now() - server->timepoint_start;
-        ImGui::Text("Server uptime %d days %02d:%02d:%02d", std::chrono::duration_cast<std::chrono::days>(server_uptime), std::chrono::duration_cast<std::chrono::hours>(server_uptime) % 24, std::chrono::duration_cast<std::chrono::minutes>(server_uptime) % 60, std::chrono::duration_cast<std::chrono::seconds>(server_uptime) % 60);
-        ImGui::Text("Server tick time %d us", std::chrono::duration_cast<std::chrono::microseconds>(server->tick_duration));
+        ImGui::Text("Server uptime %ld days %02ld:%02ld:%02ld", std::chrono::duration_cast<std::chrono::days>(server_uptime).count(), std::chrono::duration_cast<std::chrono::hours>(server_uptime).count() % 24, std::chrono::duration_cast<std::chrono::minutes>(server_uptime).count() % 60, std::chrono::duration_cast<std::chrono::seconds>(server_uptime).count() % 60);
+        ImGui::Text("Server tick time %ld us", std::chrono::duration_cast<std::chrono::microseconds>(server->tick_duration).count());
         // ImGui::Text("Float:");
         // ImGui::SameLine();
         // ImGui::SliderFloat("##float", &fval, 0.0f, 10.0f);
         ImGui::NewLine();
         if (ImGui::Button(" Stop server "))
             server->stop();
+        ImGui::SameLine();
+        if (ImGui::Button(" Randomize plane "))
+        {
+            std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->randomizePlane();
+            server->game->changeState(GameState::Flying, true);
+        }
         ImGui::NewLine();
         ImGui::End();
 
@@ -73,13 +85,26 @@ void Tui::loop()
         ImGui::SetNextWindowSize(windows.game.size, ImGuiCond_Once);
         ImGui::Begin(windows.game.name.c_str());
         ImGui::NewLine();
-        ImGui::Text("Players: %d/%d", server->players->players.size(), server->preferences->max_players);
+        ImGui::Text("Players: %ld/%d", server->players->players.size(), server->preferences->max_players);
+        ImGui::BeginTable("Game states", 1);
+        ImGui::TableSetupColumn("Name");
+        ImGui::TableHeadersRow();
+        for (size_t i = 0; i < magic_enum::enum_count<GameState>(); ++i)
+        {
+            ImGui::TableNextRow();
+            std::string text = std::string(magic_enum::enum_names<GameState>().at(i));
+            ImGui::Text(text.c_str());
+        }
+        ImGui::EndTable();
         ImGui::Text("Game state: %s", std::string(magic_enum::enum_name(server->game->state)).c_str());
         ImGui::Text("Number of rings: %d", std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->number_of_rings);
         for (size_t i = 0; i < std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.size(); ++i)
         {
             auto &ring = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.at(i);
-            ImGui::Text("Ring %d Size: %f x: %f z: %f tt: %f", i, ring.size, ring.center.x, ring.center.z, ring.travelled_time);
+            ImGui::Text("Ring %ld Size: %f x: %f z: %f", i, ring.size, ring.center.x, ring.center.z);
+            float ring_tt = ring.travel_time.count();
+            if (ImGui::SliderFloat("Travel time", &ring_tt, 0, 15))
+                ring.travel_time = std::chrono::duration<float>(ring_tt);
         }
         ImGui::NewLine();
         ImGui::End();
@@ -94,7 +119,7 @@ void Tui::loop()
             auto &player = server->players->players[i];
             std::vector<uint8_t> player_to_teleport;
             player_to_teleport.push_back(player.service.game_index);
-            ImGui::Text("Player %d Name: %s", i, player.service.name.c_str());
+            ImGui::Text("Player %ld Name: %s", i, player.service.name.c_str());
             ImGui::Text("Position");
             if (ImGui::SliderFloat("X", &player.game.position.x, -1024, 1024))
                 server->network->packet_handler.doRequest(ClientEventCode::PlayerRespawn, &player_to_teleport);
@@ -107,10 +132,11 @@ void Tui::loop()
         }
         ImGui::NewLine();
         ImGui::End();
-
-        ImGui::Render();
-
-        ImTui_ImplText_RenderDrawData(ImGui::GetDrawData(), screen);
-        ImTui_ImplNcurses_DrawScreen();
+        window.clear();
+        ImGui::SFML::Render(window);
+        window.display();
     }
+    if (window.isOpen())
+        window.close();
+    ImGui::SFML::Shutdown();
 }
