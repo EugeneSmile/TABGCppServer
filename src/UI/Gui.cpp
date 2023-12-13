@@ -9,7 +9,7 @@
 
 Gui::Gui(/* args */)
 {
-    windows.server.name = std::string(PROJECT_NAME) + "-" + std::string(VERSION_FULL);
+    windows.server.name = "Server";
     windows.server.position = {0, 0};
     windows.server.size = {300, 150};
 
@@ -35,7 +35,7 @@ void Gui::start()
 
 void Gui::threadLoop()
 {
-    sf::RenderWindow window(sf::VideoMode(1280, 800), "ImGui + SFML = <3");
+    sf::RenderWindow window(sf::VideoMode(1280, 800), std::string(PROJECT_NAME) + "-" + std::string(VERSION_FULL));
     window.setFramerateLimit(60);
     if (!ImGui::SFML::Init(window))
         return;
