@@ -14,10 +14,11 @@ enum class RingDataType
 
 struct Ring
 {
-    uint8_t index;
     RingDataType data_type;
+    uint8_t index;
     Vector3f center;
     float size;
+    float progress;
     std::chrono::duration<float> travel_time;
 };
 

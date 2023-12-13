@@ -39,7 +39,9 @@ void Started::prepareRings()
         ring.center.x = distance * cos(angle);
         ring.center.y = 0;
         ring.center.z = distance * sin(angle);
-        ring.travel_time = std::chrono::duration<float>(10);
+        // Possibly do something here
+        ring.travel_time = ring_base_time;
+        ring.progress = 0;
         ring.data_type = RingDataType::NextRingData;
         rings.push_back(ring);
         Logger::log->info("Ring {}: size {} at ({}, {}, {})", i, ring.size, ring.center.x, ring.center.y, ring.center.z);
@@ -57,10 +59,11 @@ void Started::initialize()
 
 GameState Started::process()
 {
-    current_ring->travel_time = std::chrono::duration_cast<std::chrono::seconds>(ring_timer.get());
+    current_ring->progress = 100 * ring_timer.get() / current_ring->travel_time;
     if (ring_timer.passed<std::chrono::seconds>())
-        Logger::log->debug("Rings phase: Ring {}, travel time {}", current_ring_index, current_ring->travel_time.count());
-    if (current_ring->travel_time >= ring_base_time)
+        Logger::log->debug("Rings phase: Ring {}, progress {}", current_ring_index, current_ring->progress);
+
+    if (ring_timer.get() >= current_ring->travel_time)
     {
         if (current_ring_index == number_of_rings - 1)
         {

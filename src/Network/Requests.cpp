@@ -352,7 +352,7 @@ void Requests::ringUpdate(void *ctx, ENetPeer *peer)
     {
     default:
     case RingDataType::FlyingTime:
-        request.write(ring->travel_time.count());
+        request.write(ring->progress);
         break;
 
     case RingDataType::NextRingData:
