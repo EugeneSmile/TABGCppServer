@@ -2,27 +2,22 @@
 #define NETWORK_NETWORKTYPES_H_GUARD
 
 #include <cstdint>
+#include <memory>
 
 #include "Types.h"
-
-struct NInitRoom
-{
-    uint8_t player_game_id;
-    uint8_t group_game_id;
-};
+#include "Weapon.h"
 
 struct NPlayerLeft
 {
-    uint8_t player_game_id;
+    uint8_t player_index;
     bool player_destroy;
 };
 
 struct NWeaponPickup
 {
-    uint8_t player_game_id;
-    uint32_t weapon_type_id;
-    uint32_t weapon_spawn_id;
-    uint32_t weapon_quantity;
+    uint8_t player_index;
+    uint32_t weapon_index;
+    std::shared_ptr<Weapon> weapon;
     uint8_t slot;
 };
 

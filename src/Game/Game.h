@@ -9,15 +9,20 @@
 #include "ServerPtr.h"
 #include "Types.h"
 #include "Enums.h"
-#include "Chunks.h"
 #include "GamePhase.h"
 
-#include "Phases/Waiting.h"
-#include "Phases/Countdown.h"
-#include "Phases/Flying.h"
-#include "Phases/Started.h"
-#include "Phases/Ended.h"
-#include "Phases/OpenDoors.h"
+#include "Players.h"
+#include "Groups.h"
+#include "Weapons.h"
+#include "Cars.h"
+#include "Chunks.h"
+
+#include "Waiting.h"
+#include "Countdown.h"
+#include "Flying.h"
+#include "Started.h"
+#include "Ended.h"
+#include "OpenDoors.h"
 
 class Game : public ServerPtr
 {
@@ -25,15 +30,28 @@ private:
     void keepPlayersInBounds();
 
 public:
+    std::shared_ptr<Players> players;
+    std::shared_ptr<Groups> groups;
+    std::shared_ptr<Weapons> weapons;
+    std::shared_ptr<Cars> cars;
+    std::shared_ptr<Chunks> chunks;
+
     std::unordered_map<GameState, std::shared_ptr<GamePhase>> phases;
     GameState state{GameState::WaitingForPlayers};
     float daytime{0};
-
     uint8_t modifier{0};
+    bool spawn_loot_on_start{false};
+    float player_distance_limit{1024};
 
-    Game(/* args */);
+    Game();
     void changeState(GameState state, bool force = false);
     void tick();
+
+    template <typename T>
+    std::shared_ptr<T> getPhase(GameState state)
+    {
+        return dynamic_pointer_cast<T>(phases.at(state));
+    };
 };
 
 #endif

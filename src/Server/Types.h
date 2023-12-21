@@ -66,10 +66,4 @@ typedef Vector4<int16_t> Vector4i16;
 typedef Vector4i Vector4i32;
 typedef Vector4<int64_t> Vector4i64;
 
-struct CarServiceData
-{
-    uint64_t key;
-    uint8_t game_index;
-};
-
 #endif

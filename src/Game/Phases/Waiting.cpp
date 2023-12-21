@@ -15,7 +15,7 @@ void Waiting::initialize()
 
 GameState Waiting::process()
 {
-    if (server->players->connected.size() > 0 && server->groups->groups.size() > 1)
+    if (server->network->getConnectedSize() > 0 && server->game->groups->groups.size() > 1)
         timer.resume();
     else
         timer.stop();

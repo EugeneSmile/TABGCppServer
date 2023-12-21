@@ -8,10 +8,6 @@
 #include "Logger.h"
 #include "Config.h"
 #include "ServerPtr.h"
-#include "Players.h"
-#include "Groups.h"
-#include "Weapons.h"
-#include "Cars.h"
 #include "Network.h"
 #include "Preferences.h"
 #include "Game.h"
@@ -22,19 +18,16 @@
 class Server : public std::enable_shared_from_this<Server>
 {
 private:
+    void createMaBoi();
     void run();
 
 public:
     std::shared_ptr<bool> active;
-    std::shared_ptr<Preferences> preferences;
-    std::shared_ptr<Game> game;
-    std::shared_ptr<Network> network;
-    std::shared_ptr<Players> players;
-    std::shared_ptr<Groups> groups;
-    std::shared_ptr<Weapons> weapons;
-    std::shared_ptr<Cars> cars;
+    std::unique_ptr<Preferences> preferences;
+    std::unique_ptr<Game> game;
+    std::unique_ptr<Network> network;
 #ifdef ENABLE_GUI
-    std::shared_ptr<Gui> gui;
+    std::unique_ptr<Gui> gui;
 #endif
     std::chrono::nanoseconds tick_duration;
     std::chrono::high_resolution_clock::time_point timepoint_start;

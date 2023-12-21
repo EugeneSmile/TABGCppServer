@@ -4,6 +4,7 @@
 
 #include "Logger.h"
 #include "Server.h"
+#include "Player.h"
 
 Flying::Flying(/* args */)
 {
@@ -36,6 +37,10 @@ void Flying::randomizePlane()
 
 void Flying::initialize()
 {
+    for (std::shared_ptr<Player> &player : server->game->players->players)
+        plane.players.emplace(player);
+
+    server->network->sendBroadcast(ClientEventCode::AllWeapons);
     flying_timer.restart();
 }
 
@@ -44,8 +49,18 @@ GameState Flying::process()
     if (flying_timer.passed<std::chrono::seconds>())
         Logger::log->debug("Flying time: {}", std::chrono::duration_cast<std::chrono::seconds>(flying_timer.get()).count());
     if (flying_timer.get() >= flight_time)
+    {
+        std::vector<ENetPeer *> peers;
+        for (const std::shared_ptr<Player> &player : plane.players)
+        {
+            peers.push_back(player->client.peer);
+            server->network->sendBroadcast(ClientEventCode::PlayerAirplaneDropped, reinterpret_cast<void *>(&player->index));
+        }
+        server->network->sendMulticast(peers, ClientEventCode::AllDrop);
+        plane.players.clear();
         return GameState::Started;
+    }
     float plane_status = flying_timer.get() / flight_time;
-    server->network->packet_handler.doRequest(ClientEventCode::PlaneUpdate, reinterpret_cast<void *>(&plane_status));
+    server->network->sendBroadcast(ClientEventCode::PlaneUpdate, reinterpret_cast<void *>(&plane_status));
     return GameState::Flying;
 }

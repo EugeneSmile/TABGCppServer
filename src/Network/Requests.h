@@ -8,29 +8,43 @@
 
 #include "ServerPtr.h"
 #include "Enums.h"
+#include "NetworkTypes.h"
+
+class Packet;
+
+typedef void RequestFunction(std::unique_ptr<Packet> &packet, void *ctx);
+typedef std::function<RequestFunction> RequestFunctionPtr;
 
 class Requests : public ServerPtr
 {
 public:
-    std::unordered_map<ClientEventCode, std::function<void(void *, ENetPeer *)>> function;
+    std::unordered_map<ClientEventCode, RequestFunctionPtr> function;
+    std::unordered_map<ClientEventCode, size_t> buffer_size;
 
     Requests();
-    void serverShutdown(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void initRoom(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void playerUpdate(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void login(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void playerLeft(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void playerRespawn(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void playerFire(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void gameStateChanged(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void weaponPickup(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void airplaneDrop(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void chatMessage(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void throwChatMessage(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void spawnGun(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void ringUpdate(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void startRegisterDamage(void *ctx = nullptr, ENetPeer *peer = nullptr);
-    void planeUpdate(void *ctx = nullptr, ENetPeer *peer = nullptr);
+    RequestFunction serverShutdown;
+    RequestFunction initRoom;
+    RequestFunction playerUpdate;
+    RequestFunction login;
+    RequestFunction playerLeft;
+    RequestFunction playerRespawn;
+    RequestFunction playerFire;
+    RequestFunction gameStateChanged;
+    RequestFunction weaponPickup;
+    RequestFunction airplaneDrop;
+    RequestFunction chatMessage;
+    RequestFunction throwChatMessage;
+    RequestFunction spawnGun;
+    RequestFunction ringUpdate;
+    RequestFunction startRegisterDamage;
+    RequestFunction planeUpdate;
+    RequestFunction planeAllDrop;
+    RequestFunction playerLand;
+    RequestFunction allWeapons;
+    RequestFunction chunkEntry;
+    RequestFunction chunkExit;
+    RequestFunction chunkEntryOtherPlayer;
+    RequestFunction chunkExitOtherPlayer;
 };
 
 #endif

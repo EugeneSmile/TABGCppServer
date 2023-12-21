@@ -1,6 +1,7 @@
 #include "Requests.h"
 
 #include "Server.h"
+#include "Packet.h"
 #include "Buffer.h"
 #include "VectorConverter.h"
 
@@ -22,358 +23,510 @@ Requests::Requests()
     function[ClientEventCode::RingUpdate] = std::bind(&Requests::ringUpdate, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::PlayerRegMessage] = std::bind(&Requests::startRegisterDamage, this, std::placeholders::_1, std::placeholders::_2);
     function[ClientEventCode::PlaneUpdate] = std::bind(&Requests::planeUpdate, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::PlayerLand] = std::bind(&Requests::playerLand, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::AllDrop] = std::bind(&Requests::planeAllDrop, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::AllWeapons] = std::bind(&Requests::allWeapons, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::ChunkEntry] = std::bind(&Requests::chunkEntry, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::ChunkExit] = std::bind(&Requests::chunkExit, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::PlayerEnteredChunk] = std::bind(&Requests::chunkEntryOtherPlayer, this, std::placeholders::_1, std::placeholders::_2);
+    function[ClientEventCode::PlayerLeftChunk] = std::bind(&Requests::chunkExitOtherPlayer, this, std::placeholders::_1, std::placeholders::_2);
+
+    buffer_size[ClientEventCode::ServerShutDown] = 1;
+    buffer_size[ClientEventCode::RoomInitRequestResponse] = 12 + server->preferences->name.size();
+    buffer_size[ClientEventCode::Login] = 4096;
+    buffer_size[ClientEventCode::PlayerLeft] = 3;
+    buffer_size[ClientEventCode::PlayerRespawn] = 6144;
+    buffer_size[ClientEventCode::PlayerUpdate] = 4096;
+    buffer_size[ClientEventCode::PlayerFire] = 31;
+    buffer_size[ClientEventCode::GameStateChanged] = 31;
+    buffer_size[ClientEventCode::WeaponPickUpAccepted] = 15;
+    buffer_size[ClientEventCode::PlayerAirplaneDropped] = 26;
+    buffer_size[ClientEventCode::ThrowChatMessage] = 288;
+    buffer_size[ClientEventCode::SpawnGun] = 20;
+    buffer_size[ClientEventCode::RingUpdate] = 19;
+    buffer_size[ClientEventCode::PlayerRegMessage] = 2;
+    buffer_size[ClientEventCode::PlaneUpdate] = 5;
+    buffer_size[ClientEventCode::PlayerLand] = 14;
+    buffer_size[ClientEventCode::AllDrop] = 13;
+    buffer_size[ClientEventCode::AllWeapons] = 5 + 24 * server->game->weapons->weapons.size();
+    buffer_size[ClientEventCode::ChunkEntry] = 4096;
+    buffer_size[ClientEventCode::ChunkExit] = 4096;
+    buffer_size[ClientEventCode::PlayerEnteredChunk] = 1024;
+    buffer_size[ClientEventCode::PlayerLeftChunk] = 1024;
 }
 
-void Requests::serverShutdown(void *ctx, ENetPeer *peer)
+void Requests::serverShutdown(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::ServerShutDown, nullptr, true);
 }
 
-void Requests::initRoom(void *ctx, ENetPeer *peer)
+void Requests::initRoom(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(8 + server->preferences->name.size() + 4);
+    Buffer &buffer = packet->buffer;
+    const std::shared_ptr<Player> &player = server->game->players->players.at(*reinterpret_cast<uint8_t *>(ctx));
 
-    request.write(ServerResponse::Accepted);
-    request.write(GameMode::BattleRoyale);
-    request.write(uint8_t(0));
-    request.write(reinterpret_cast<NInitRoom *>(ctx)->player_game_id);
-    request.write(reinterpret_cast<NInitRoom *>(ctx)->group_game_id);
-    request.write<std::string>(server->preferences->name);
-
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::RoomInitRequestResponse, &request, true);
+    buffer.write(ServerResponse::Accepted);
+    buffer.write(GameMode::BattleRoyale);
+    buffer.write(uint8_t(0));
+    buffer.write(player->index);
+    buffer.write(player->group->index);
+    buffer.write<std::string>(server->preferences->name);
 }
 
-void Requests::login(void *ctx, ENetPeer *peer)
+void Requests::login(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    auto player = server->players->findPlayer(*reinterpret_cast<std::string *>(ctx));
+    Buffer &buffer = packet->buffer;
+    const std::shared_ptr<Player> &player = server->game->players->players.at(*reinterpret_cast<uint8_t *>(ctx));
 
-    Buffer request = Buffer(4096);
-
-    request.write(player->service.game_index);
-    request.write(server->groups->player_group_map[player->service.game_index]);
-    request.write<std::string>(player->service.name);
-    if (peer != nullptr)
+    buffer.write(player->index);
+    buffer.write(player->group->index);
+    buffer.write<std::string>(player->client.name);
+    if (packet->type == PacketType::UNICAST)
     {
-        request.write(player->service.dev);
-        request.write(player->game.position);
-        request.write(player->game.rotation.y);
-        request.write(!bool(player->game.health));
-        request.write(bool(player->game.health < 100));
-        request.write(player->game.health);
-        request.write(player->game.driving.is_driving);
-        if (player->game.driving.is_driving)
+        buffer.write(player->client.dev);
+        buffer.write(player->game.position);
+        buffer.write(player->game.rotation.y);
+        buffer.write(!bool(player->game.health));
+        buffer.write(bool(player->game.health < 100));
+        buffer.write(player->game.health);
+        buffer.write(player->driving.is_driving);
+        if (player->driving.is_driving)
         {
-            request.write(player->game.driving.car_id);
-            request.write(player->game.driving.seat_id);
+            buffer.write(player->driving.car->index);
+            buffer.write(player->driving.seat_id);
         }
-        request.write(uint8_t(server->players->connected.size()));
-        for (const auto &other_player : server->players->players)
+
+        // Players
+        buffer.write(uint8_t(server->game->players->players.size()));
+        for (const std::shared_ptr<Player> &other_player : server->game->players->players)
         {
-            request.write(other_player.service.game_index);
-            request.write(server->groups->player_group_map[other_player.service.game_index]);
-            request.write<std::string>(other_player.service.name);
+            buffer.write(other_player->index);
+            buffer.write(other_player->group->index);
+            buffer.write<std::string>(other_player->client.name);
             // weapon (?)
-            request.write(uint32_t(0));
-            request.write(other_player.service.gear_length);
-            for (size_t i = 0; i < other_player.service.gear_length; ++i)
-                request.write(other_player.service.gear[i]);
-            request.write(other_player.service.dev);
-            request.write(other_player.service.color);
+            buffer.write(uint32_t(0));
+            buffer.write(uint32_t(other_player->client.gear.size()));
+            for (size_t i = 0; i < other_player->client.gear.size(); ++i)
+                buffer.write(other_player->client.gear[i]);
+            buffer.write(other_player->client.dev);
+            buffer.write(other_player->client.color);
         }
 
         // Weapons
-        request.write(server->weapons->getNumberOfWeapons());
-        for (uint32_t i = 0; i < server->weapons->getNumberOfWeapons(); ++i)
+        if (server->game->spawn_loot_on_start)
         {
-            Weapon &weapon = server->weapons->getWeapon(i);
-            request.write(i);
-            // uniqueIdentifier (?) - uint32
-            request.write(weapon.type);
-            // quantity (?) - uint32
-            request.write(weapon.quantity);
-            // spawn
-            request.write(weapon.position);
+            buffer.write(uint32_t(server->game->weapons->weapons.size()));
+            for (const std::shared_ptr<Weapon> &weapon : server->game->weapons->weapons)
+            {
+                buffer.write(weapon->index);
+                buffer.write(weapon->id);
+                buffer.write(weapon->quantity);
+                buffer.write(weapon->position);
+            }
+        }
+        else
+        {
+            buffer.write(uint32_t(0));
         }
 
         // Cars
-        request.write(server->cars->cars.size());
-        for (const auto &car_pair : server->cars->cars)
+        buffer.write(uint32_t(server->game->cars->cars.size()));
+        for (const std::shared_ptr<Car> &car : server->game->cars->cars)
         {
-            auto &car = car_pair.second;
-            request.write(car_pair.first.game_index);
-            // Currently unknown (?)
-            request.write(car.type);
-            request.write(car.seats);
-            for (uint32_t j = 0; j < car.seats; ++j)
-                request.write(j);
-            request.write(uint8_t(car.parts.size()));
-            for (uint8_t j = 0; j < car.parts.size(); ++j)
+            buffer.write(car->id);
+            buffer.write(car->index);
+            buffer.write(uint32_t(car->seats.size()));
+            for (uint32_t j = 0; j < car->seats.size(); ++j)
+                buffer.write(j);
+            buffer.write(uint8_t(car->parts.size()));
+            for (uint8_t j = 0; j < car->parts.size(); ++j)
             {
-                request.write(j);
-                request.write(car.parts[j].health);
-                request.write<std::string>(car.parts[j].name);
+                buffer.write(j);
+                buffer.write(car->parts[j].health);
+                buffer.write<std::string, uint8_t>(car->parts[j].name);
             }
         }
 
-        request.write(server->game->daytime);
-        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->ring_spawn_delay.count());
-        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->ring_base_time.count());
+        buffer.write(server->game->daytime);
+        buffer.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->ring_spawn_delay.count());
+        buffer.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->ring_base_time.count());
 
         // (?) need to clarify
-        request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.size());
+        buffer.write(uint8_t(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.size()));
         for (size_t i = 0; i < std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.size(); ++i)
         {
             // Ring sizes
-            request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.at(i).size);
+            buffer.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.at(i).size);
             // Ring travel time
-            request.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.at(i).travel_time.count());
+            buffer.write(std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings.at(i).travel_time.count());
         }
 
-        request.write(server->preferences->lives);
-        request.write(server->preferences->kills);
-        request.write(server->game->state);
+        buffer.write(server->preferences->lives);
+        buffer.write(server->preferences->kills);
+        buffer.write(server->game->state);
         if (server->game->state == GameState::CountDown)
-            request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->flight_time.count());
+            buffer.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->flight_time.count());
         if (server->game->state == GameState::Flying || server->game->state == GameState::Started)
         {
             // (?) not clear boolean
-            request.write(server->game->state == GameState::Flying);
-            request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start);
-            request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish);
+            buffer.write(server->game->state == GameState::Flying);
+            buffer.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start);
+            buffer.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish);
         }
     }
-    else
-    {
-        request.write(player->service.gear_length);
-        for (size_t i = 0; i < player->service.gear_length; ++i)
-            request.write(player->service.gear.at(i));
-        request.write(player->service.dev);
-        request.write(player->service.color);
-    }
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::Login, &request, true);
+    buffer.write(uint32_t(player->client.gear.size()));
+    for (size_t i = 0; i < player->client.gear.size(); ++i)
+        buffer.write(player->client.gear.at(i));
+    buffer.write(player->client.dev);
+    buffer.write(player->client.color);
 }
 
-void Requests::playerUpdate(void *ctx, ENetPeer *peer)
+void Requests::playerUpdate(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(4096);
+    Buffer &buffer = packet->buffer;
     // Oooh, dirty
-    request.write(static_cast<float>(static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())));
+    buffer.write(static_cast<float>(static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())));
 
     // Players section
 
-    request.write(uint8_t(server->players->connected.size()));
-    for (const auto &player : server->players->players)
+    buffer.write(uint8_t(server->game->players->players.size()));
+    for (const std::shared_ptr<Player> &player : server->game->players->players)
     {
-        request.write(player.service.game_index);
-        PacketContainerFlags packet_flags = (player.game.driving.is_driving ? PacketContainerFlags::All : PacketContainerFlags::PlayerPosition | PacketContainerFlags::PlayerRotation | PacketContainerFlags::PlayerDirection);
-        request.write(packet_flags);
-        request.write(player.game.driving.state);
-        if (player.game.driving.state == DrivingState::Driving)
+        buffer.write(player->index);
+        PacketContainerFlags packet_flags = (player->driving.is_driving ? PacketContainerFlags::All : PacketContainerFlags::PlayerPosition | PacketContainerFlags::PlayerRotation | PacketContainerFlags::PlayerDirection);
+        buffer.write(packet_flags);
+        buffer.write(player->driving.state);
+        if (player->driving.state == DrivingState::Driving && player->driving.car)
         {
-            Car &car = server->cars->cars[player.game.driving.car_id].second;
+            auto &car = player->driving.car;
             if (packet_flags & PacketContainerFlags::CarPosition || packet_flags == PacketContainerFlags::All)
-                request.write(car.position);
+                buffer.write(car->position);
             if (packet_flags & PacketContainerFlags::CarRotation || packet_flags == PacketContainerFlags::All)
             {
-                request.write<Quaternion>(car.rotation);
+                buffer.write<Quaternion>(car->rotation);
             }
             if (packet_flags & PacketContainerFlags::CarInput || packet_flags == PacketContainerFlags::All)
-                request.write(convertFloatToUInt8(car.input));
+                buffer.write(convertFloatToUInt8(car->input));
             if (packet_flags & PacketContainerFlags::PlayerRotation || packet_flags == PacketContainerFlags::All)
-                request.write(player.game.rotation);
-            request.write(car.driving_state);
+                buffer.write(player->game.rotation);
+            buffer.write(car->driving_state);
         }
         else
         {
             if (packet_flags & PacketContainerFlags::PlayerPosition || packet_flags == PacketContainerFlags::All)
-                request.write(player.game.position);
-            if (player.game.driving.state != DrivingState::Slow)
+                buffer.write(player->game.position);
+            if (player->driving.state != DrivingState::Slow)
             {
                 if (packet_flags & PacketContainerFlags::PlayerRotation || packet_flags == PacketContainerFlags::All)
-                    request.write(player.game.rotation);
-                request.write(player.game.aim_down_sight);
+                    buffer.write(player->game.rotation);
+                buffer.write(player->game.aim_down_sight);
                 if (packet_flags & PacketContainerFlags::PlayerDirection || packet_flags == PacketContainerFlags::All)
-                    request.write(convertFloatToUInt8(player.game.direction));
-                request.write(player.game.movement_type);
+                    buffer.write(convertFloatToUInt8(player->game.direction));
+                buffer.write(player->game.movement_type);
             }
             else
             {
-                request.write(player.game.rotation.y);
+                buffer.write(player->game.rotation.y);
             }
         }
     }
 
     // Cars section
 
-    request.write(uint8_t(server->cars->cars.size()));
-    for (auto &car : server->cars->cars)
+    buffer.write(uint8_t(server->game->cars->cars.size()));
+    for (const auto &car : server->game->cars->cars)
     {
-        request.write(car.first.game_index);
-        request.write(car.second.position);
-        request.write<Quaternion>(car.second.rotation);
+        buffer.write(car->index);
+        buffer.write(car->position);
+        buffer.write<Quaternion>(car->rotation);
     }
-
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerUpdate, &request, true);
 }
 
-void Requests::playerLeft(void *ctx, ENetPeer *peer)
+void Requests::playerLeft(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(3);
-    request.write(reinterpret_cast<NPlayerLeft *>(ctx)->player_game_id);
-    request.write(reinterpret_cast<NPlayerLeft *>(ctx)->player_destroy);
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerLeft, &request, true);
+    Buffer &buffer = packet->buffer;
+    buffer.write(*reinterpret_cast<uint8_t *>(ctx));
+    buffer.write(bool(true));
 }
 
-void Requests::playerRespawn(void *ctx, ENetPeer *peer)
+void Requests::playerRespawn(std::unique_ptr<Packet> &packet, void *ctx)
 {
+    Buffer &buffer = packet->buffer;
     std::vector<uint8_t> *player_ids = reinterpret_cast<std::vector<uint8_t> *>(ctx);
-    Buffer request = Buffer(2 + 23 * player_ids->size());
-    request.write(static_cast<uint8_t>(player_ids->size()));
+
+    buffer.write(static_cast<uint8_t>(player_ids->size()));
     for (auto player_id : *player_ids)
     {
-        auto player = server->players->findPlayer(player_id);
-        request.write(player->service.game_index);
+        const std::shared_ptr<Player> &player = server->game->players->players.at(player_id);
+        buffer.write(player->index);
         // New index (let be the same now)
-        request.write(player->service.game_index);
-        request.write(player->game.health);
-        request.write(player->game.position);
-        request.write(player->game.rotation.x);
-        request.write(player->game.curse_id);
+        buffer.write(player->index);
+        buffer.write(player->game.health);
+        buffer.write(player->game.position);
+        buffer.write(player->game.rotation.x);
+        buffer.write(player->game.curse_id);
     }
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerRespawn, &request, true);
 }
 
-void Requests::playerFire(void *ctx, ENetPeer *peer)
+void Requests::playerFire(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(31);
-    uint8_t player_id = *reinterpret_cast<uint8_t *>(ctx);
-    auto player = server->players->findPlayer(player_id);
-    request.write(player->service.game_index);
-    request.write(player->game.firing.mode);
-    request.write(uint32_t(0));
-    if (player->game.firing.mode & FiringMode::ContainsDirection)
+    Buffer &buffer = packet->buffer;
+    const std::shared_ptr<Player> &player = server->game->players->players.at(*reinterpret_cast<uint8_t *>(ctx));
+    buffer.write(player->index);
+    buffer.write(player->firing.mode);
+    buffer.write(uint32_t(0));
+    if (player->firing.mode & FiringMode::ContainsDirection)
     {
-        request.write(player->game.position);
+        buffer.write(player->game.position);
         // ToDo
         Quaternion quat = Quaternion(4);
-        request.write<Quaternion>(quat);
+        buffer.write<Quaternion>(quat);
     }
     // ToDo: Sync Index
-    if (player->game.firing.mode & FiringMode::WantsToBeSynced)
-        request.write(uint32_t(0));
-    if (player->game.firing.mode & FiringMode::UseBulletEffect)
-        request.write(player->game.firing.bullet_effect);
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerFire, &request, true);
+    if (player->firing.mode & FiringMode::WantsToBeSynced)
+        buffer.write(uint32_t(0));
+    if (player->firing.mode & FiringMode::UseBulletEffect)
+        buffer.write(player->firing.bullet_effect);
 }
 
-void Requests::gameStateChanged(void *ctx, ENetPeer *peer)
+void Requests::gameStateChanged(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(31);
-    request.write(server->game->state);
+    Buffer &buffer = packet->buffer;
+    buffer.write(server->game->state);
     switch (server->game->state)
     {
     case GameState::CountDown:
-        request.write(std::dynamic_pointer_cast<Countdown>(server->game->phases.at(GameState::CountDown))->countdown_time.count());
+        buffer.write(std::dynamic_pointer_cast<Countdown>(server->game->phases.at(GameState::CountDown))->countdown_time.count());
         break;
 
     case GameState::Flying:
-        request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start);
-        request.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish);
-        request.write(server->game->daytime);
-        request.write(server->game->modifier);
+        buffer.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.start);
+        buffer.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish);
+        buffer.write(server->game->daytime);
+        buffer.write(server->game->modifier);
         break;
 
     case GameState::Ended:
         // ToDo: winning group
-        request.write(uint8_t(0));
+        buffer.write(uint8_t(0));
         break;
 
     default:
         break;
     }
-
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::GameStateChanged, &request, true);
 }
 
-void Requests::weaponPickup(void *ctx, ENetPeer *peer)
+void Requests::weaponPickup(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(15);
-    request.write(*reinterpret_cast<NWeaponPickup *>(ctx));
+    Buffer &buffer = packet->buffer;
+    NWeaponPickup *payload = reinterpret_cast<NWeaponPickup *>(ctx);
+    buffer.write(payload->player_index);
+    buffer.write(payload->weapon_index);
+    buffer.write(payload->weapon->type);
+    buffer.write(payload->weapon->quantity);
+    buffer.write(payload->slot);
 }
 
-void Requests::airplaneDrop(void *ctx, ENetPeer *peer)
+void Requests::airplaneDrop(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(26);
-    auto player_id = *reinterpret_cast<uint8_t *>(ctx);
-    auto player = server->players->findPlayer(player_id);
-    request.write(player_id);
-    request.write(player->game.position);
-    request.write(player->game.direction);
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerAirplaneDropped, &request, true);
+    Buffer &buffer = packet->buffer;
+    const std::shared_ptr<Player> &player = server->game->players->players.at(*reinterpret_cast<uint8_t *>(ctx));
+    buffer.write(player->index);
+    buffer.write(player->game.position);
+    buffer.write(player->game.direction);
 }
 
-void Requests::chatMessage(void *ctx, ENetPeer *peer)
+void Requests::chatMessage(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::ChatMessage, reinterpret_cast<Buffer *>(ctx), true);
 }
 
-void Requests::throwChatMessage(void *ctx, ENetPeer *peer)
+void Requests::throwChatMessage(std::unique_ptr<Packet> &packet, void *ctx)
 {
+    Buffer &buffer = packet->buffer;
+    // ToDo
     Buffer *response = reinterpret_cast<Buffer *>(ctx);
     uint8_t player_id = response->read<uint8_t>();
     std::string message = response->read<std::string>();
 
-    auto player = server->players->findPlayer(player_id);
+    const std::shared_ptr<Player> &player = server->game->players->players.at(*reinterpret_cast<uint8_t *>(ctx));
 
-    Buffer request = Buffer(5 * sizeof(float) + 2 * sizeof(uint8_t) + message.size());
-    request.write(player_id);
-    request.write(player->game.position);
-    request.write(player->game.direction);
-    request.write<std::string>(message);
+    buffer.write(player_id);
+    buffer.write(player->game.position);
+    buffer.write(player->game.direction);
+    buffer.write<std::string>(message);
 }
 
-void Requests::spawnGun(void *ctx, ENetPeer *peer)
+void Requests::spawnGun(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(20);
-    request.write(uint32_t(10));
-    request.write(uint32_t(10));
-    request.write(float(0));
-    request.write(float(100));
-    request.write(float(0));
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::SpawnGun, &request, true);
+    Buffer &buffer = packet->buffer;
+    buffer.write(uint32_t(10));
+    buffer.write(uint32_t(10));
+    buffer.write(float(0));
+    buffer.write(float(100));
+    buffer.write(float(0));
 }
 
-void Requests::ringUpdate(void *ctx, ENetPeer *peer)
+void Requests::ringUpdate(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(19);
+    Buffer &buffer = packet->buffer;
     Ring *ring = reinterpret_cast<Ring *>(ctx);
-    request.write(static_cast<uint8_t>(ring->data_type));
+    buffer.write(static_cast<uint8_t>(ring->data_type));
     switch (ring->data_type)
     {
     default:
     case RingDataType::FlyingTime:
-        request.write(ring->progress);
+        buffer.write(ring->progress);
         break;
 
     case RingDataType::NextRingData:
-        request.write(ring->index);
-        request.write(ring->center);
-        request.write(ring->size);
+        buffer.write(ring->index);
+        buffer.write(ring->center);
+        buffer.write(ring->size);
         break;
     }
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::RingUpdate, &request, true);
 }
 
-void Requests::startRegisterDamage(void *ctx, ENetPeer *peer)
+void Requests::startRegisterDamage(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(2);
-    request.write(*reinterpret_cast<uint8_t *>(ctx));
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlayerRegMessage, &request, true);
+    Buffer &buffer = packet->buffer;
+    buffer.write(*reinterpret_cast<uint8_t *>(ctx));
 }
 
-void Requests::planeUpdate(void *ctx, ENetPeer *peer)
+void Requests::planeUpdate(std::unique_ptr<Packet> &packet, void *ctx)
 {
-    Buffer request = Buffer(5);
-    request.write(*reinterpret_cast<float *>(ctx));
-    server->network->packet_handler.handleRequest(peer, ClientEventCode::PlaneUpdate, &request, true);
+    Buffer &buffer = packet->buffer;
+    buffer.write(*reinterpret_cast<float *>(ctx));
+}
+
+void Requests::playerLand(std::unique_ptr<Packet> &packet, void *ctx)
+{
+    Buffer &buffer = packet->buffer;
+    uint8_t player_id = *reinterpret_cast<uint8_t *>(ctx);
+    buffer.write(player_id);
+    buffer.write(server->game->players->players.at(player_id)->game.position);
+}
+
+void Requests::planeAllDrop(std::unique_ptr<Packet> &packet, void *ctx)
+{
+    Buffer &buffer = packet->buffer;
+    buffer.write(std::dynamic_pointer_cast<Flying>(server->game->phases.at(GameState::Flying))->plane.finish);
+}
+
+void Requests::allWeapons(std::unique_ptr<Packet> &packet, void *ctx)
+{
+    Buffer &buffer = packet->buffer;
+    buffer.write(uint32_t(server->game->weapons->weapons.size()));
+    for (const std::shared_ptr<Weapon> &weapon : server->game->weapons->weapons)
+    {
+        buffer.write(weapon->index);
+        buffer.write(weapon->id);
+        buffer.write(weapon->quantity);
+        buffer.write(weapon->position);
+    }
+}
+
+void Requests::chunkEntry(std::unique_ptr<Packet> &packet, void *ctx)
+{
+    Buffer &buffer = packet->buffer;
+    const std::shared_ptr<Player> &player = server->game->players->players.at(*reinterpret_cast<uint8_t *>(ctx));
+
+    buffer.write(player->index);
+    buffer.write(uint8_t(player->chunk->players.size()));
+    buffer.write(uint16_t(player->chunk->weapons.size()));
+    buffer.write(uint16_t(player->chunk->cars.size()));
+    for (const std::shared_ptr<Player> &other_player : player->chunk->players)
+    {
+        buffer.write(other_player->index);
+        buffer.write(other_player->game.state);
+        buffer.write(uint32_t(0));
+        buffer.write(other_player->game.health);
+        buffer.write(bool(other_player->game.health < 100));
+        buffer.write(other_player->game.flying);
+        buffer.write(uint32_t(other_player->client.gear.size()));
+        for (uint32_t i = 0; i < other_player->client.gear.size(); ++i)
+            buffer.write(other_player->client.gear.at(i));
+        buffer.write(uint8_t(0)); // uint8_t inventory array size
+        // uint16_t inventory array
+        buffer.write(uint8_t(0)); // uint8_t attachments array size
+                                  // uint16_t attachments array
+    }
+    for (const std::shared_ptr<Weapon> &weapon : player->chunk->weapons)
+    {
+        buffer.write(weapon->index);
+        buffer.write(weapon->id);
+        buffer.write(weapon->quantity);
+        buffer.write(weapon->position);
+    }
+    for (const std::shared_ptr<Car> &car : player->chunk->cars)
+    {
+        buffer.write(car->index);
+        // Health (?) - looks like unused in client
+        buffer.write(float(100));
+        buffer.write(car->position);
+        buffer.write<Quaternion>(car->rotation);
+        for (const std::shared_ptr<Player> &seating_player : car->seats)
+        {
+            if (seating_player)
+                buffer.write(seating_player->index);
+            else
+                buffer.write(UINT8_MAX);
+        }
+    }
+}
+
+void Requests::chunkExit(std::unique_ptr<Packet> &packet, void *ctx)
+{
+    Buffer &buffer = packet->buffer;
+    const std::shared_ptr<Player> &player = server->game->players->players.at(*reinterpret_cast<uint8_t *>(ctx));
+
+    buffer.write(player->index);
+    buffer.write(uint8_t(player->chunk->players.size()));
+    buffer.write(uint16_t(player->chunk->weapons.size()));
+    buffer.write(uint16_t(player->chunk->cars.size()));
+    for (const std::shared_ptr<Player> &other_player : player->chunk->players)
+        buffer.write(other_player->index);
+    for (const std::shared_ptr<Weapon> &weapon : player->chunk->weapons)
+        buffer.write(weapon->index);
+    for (const std::shared_ptr<Car> &car : player->chunk->cars)
+        buffer.write(car->index);
+}
+
+void Requests::chunkEntryOtherPlayer(std::unique_ptr<Packet> &packet, void *ctx)
+{
+    Buffer &buffer = packet->buffer;
+    Player *player = reinterpret_cast<Player *>(ctx);
+    buffer.write(player->index);
+    buffer.write(player->game.state);
+    // Weapon data
+    buffer.write(uint32_t(0));
+    buffer.write(player->game.health);
+    buffer.write(player->game.knocked);
+    buffer.write(player->game.flying);
+    buffer.write(uint32_t(player->client.gear.size()));
+    for (uint32_t i = 0; i < player->client.gear.size(); ++i)
+        buffer.write(player->client.gear.at(i));
+    buffer.write(uint8_t(0)); // uint8_t inventory array size
+    // uint16_t inventory array
+    buffer.write(uint8_t(0)); // uint8_t attachments array size
+    // uint16_t attachments array
+    buffer.write(player->inventory.blessings.at(0)->type);
+    buffer.write(player->inventory.blessings.at(1)->type);
+    buffer.write(player->inventory.blessings.at(2)->type);
+    buffer.write(player->driving.state);
+    if (player->driving.state == DrivingState::Driving)
+    {
+        buffer.write(player->driving.car->index);
+        for (auto &seat : player->driving.car->seats)
+            if (seat)
+                buffer.write(seat->index);
+            else
+                buffer.write(UINT8_MAX);
+    }
+}
+
+void Requests::chunkExitOtherPlayer(std::unique_ptr<Packet> &packet, void *ctx)
+{
+    Buffer &buffer = packet->buffer;
+    Player *player = reinterpret_cast<Player *>(ctx);
+    buffer.write(player->index);
+    buffer.write(uint8_t(0));
 }

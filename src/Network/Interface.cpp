@@ -56,7 +56,7 @@ crow::json::wvalue Interface::getServerList(const crow::request &request)
     crow::json::wvalue ret;
     ret["id"] = server->preferences->id;
     ret["serverName"] = server->preferences->name;
-    ret["playersOnServer"] = server->players->connected.size();
+    // ret["playersOnServer"] = server->game->players->connected.size();
     ret["splotReserved"] = 0;
     ret["maxPlayers"] = server->preferences->max_players;
     ret["acceptingPlayers"] = server->preferences->accepting_players;
@@ -109,35 +109,34 @@ crow::json::wvalue Interface::getServerData(const crow::request &request)
         ret["game"]["rings"][i]["center"]["z"] = std::dynamic_pointer_cast<Started>(server->game->phases.at(GameState::Started))->rings[i].center.z;
     }
 
-    for (auto player : server->players->players)
+    for (std::shared_ptr<Player> player : server->game->players->players)
     {
-        ret["players"][player.service.game_index]["name"] = player.service.name;
-        ret["players"][player.service.game_index]["group_index"] = player.service.group_index;
-        ret["players"][player.service.game_index]["squad_host"] = player.service.squad_host;
-        ret["players"][player.service.game_index]["squad_members"] = player.service.squad_members;
-        ret["players"][player.service.game_index]["auto_squad"] = player.service.auto_squad;
-        ret["players"][player.service.game_index]["connected"] = player.service.connected;
-        ret["players"][player.service.game_index]["dev"] = player.service.dev;
-        ret["players"][player.service.game_index]["health"] = player.game.health;
-        ret["players"][player.service.game_index]["position"]["x"] = player.game.position.x;
-        ret["players"][player.service.game_index]["position"]["y"] = player.game.position.y;
-        ret["players"][player.service.game_index]["position"]["z"] = player.game.position.z;
-        ret["players"][player.service.game_index]["rotation"]["x"] = player.game.rotation.x;
-        ret["players"][player.service.game_index]["rotation"]["y"] = player.game.rotation.y;
-        ret["players"][player.service.game_index]["direction"]["x"] = player.game.direction.x;
-        ret["players"][player.service.game_index]["direction"]["y"] = player.game.direction.y;
-        ret["players"][player.service.game_index]["direction"]["z"] = player.game.direction.z;
-        ret["players"][player.service.game_index]["aim_down_sight"] = player.game.aim_down_sight;
-        ret["players"][player.service.game_index]["movement_type"] = static_cast<int64_t>(player.game.movement_type);
-        ret["players"][player.service.game_index]["flying"] = player.game.flying;
-        ret["players"][player.service.game_index]["firing_mode"] = static_cast<int64_t>(player.game.firing.mode);
-        ret["players"][player.service.game_index]["firing_ammo_type"] = player.game.firing.ammo_type;
-        ret["players"][player.service.game_index]["firing_extra_data"] = player.game.firing.extra_data;
-        ret["players"][player.service.game_index]["firing_bullet_effect"] = static_cast<int64_t>(player.game.firing.bullet_effect);
-        ret["players"][player.service.game_index]["is_driving"] = player.game.driving.is_driving;
-        ret["players"][player.service.game_index]["car_id"] = player.game.driving.car_id;
-        ret["players"][player.service.game_index]["seat_id"] = player.game.driving.seat_id;
-        ret["players"][player.service.game_index]["driving_state"] = static_cast<int64_t>(player.game.driving.state);
+        ret["players"][player->index]["name"] = player->client.name;
+        ret["players"][player->index]["group_host"] = player->client.group_host;
+        ret["players"][player->index]["group_size"] = player->client.group_size;
+        ret["players"][player->index]["auto_squad"] = player->client.auto_squad;
+        // ret["players"][player->index]["connected"] = player->client.connected;
+        ret["players"][player->index]["dev"] = player->client.dev;
+        ret["players"][player->index]["health"] = player->game.health;
+        ret["players"][player->index]["position"]["x"] = player->game.position.x;
+        ret["players"][player->index]["position"]["y"] = player->game.position.y;
+        ret["players"][player->index]["position"]["z"] = player->game.position.z;
+        ret["players"][player->index]["rotation"]["x"] = player->game.rotation.x;
+        ret["players"][player->index]["rotation"]["y"] = player->game.rotation.y;
+        ret["players"][player->index]["direction"]["x"] = player->game.direction.x;
+        ret["players"][player->index]["direction"]["y"] = player->game.direction.y;
+        ret["players"][player->index]["direction"]["z"] = player->game.direction.z;
+        ret["players"][player->index]["aim_down_sight"] = player->game.aim_down_sight;
+        ret["players"][player->index]["movement_type"] = static_cast<int64_t>(player->game.movement_type);
+        ret["players"][player->index]["flying"] = player->game.flying;
+        ret["players"][player->index]["firing_mode"] = static_cast<int64_t>(player->firing.mode);
+        ret["players"][player->index]["firing_ammo_type"] = player->firing.ammo_type;
+        ret["players"][player->index]["firing_extra_data"] = player->firing.extra_data;
+        ret["players"][player->index]["firing_bullet_effect"] = static_cast<int64_t>(player->firing.bullet_effect);
+        ret["players"][player->index]["is_driving"] = player->driving.is_driving;
+        ret["players"][player->index]["car_id"] = player->driving.car->index;
+        ret["players"][player->index]["seat_id"] = player->driving.seat_id;
+        ret["players"][player->index]["driving_state"] = static_cast<int64_t>(player->driving.state);
     }
     return ret;
 }

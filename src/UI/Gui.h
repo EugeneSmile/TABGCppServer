@@ -21,6 +21,7 @@ private:
         WindowData server;
         WindowData game;
         WindowData players;
+        WindowData weapons;
     } windows;
 
     std::thread thread_main_window;

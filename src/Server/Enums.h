@@ -277,4 +277,11 @@ enum class MarkerActionType
     Remove
 };
 
+enum class TABGPlayerState
+{
+    None = 0,
+    Buff = 1,
+    Transcended = 2
+};
+
 #endif

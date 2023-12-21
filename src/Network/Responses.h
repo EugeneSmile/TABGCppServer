@@ -3,37 +3,42 @@
 
 #include <functional>
 #include <unordered_map>
+#include <memory>
 
 #include <enet.h>
 
 #include "ServerPtr.h"
 #include "Enums.h"
 
-typedef std::function<void(ENetEvent *)> ResponceFunction;
+class Packet;
+
+typedef void ResponseFunction(std::unique_ptr<Packet> &packet);
+typedef std::function<ResponseFunction> ResponseFunctionPtr;
 
 class Responses : public ServerPtr
 {
 public:
-    std::unordered_map<ClientEventCode, std::function<void(ENetEvent *)>> function;
+    std::unordered_map<ClientEventCode, ResponseFunctionPtr> function;
 
     Responses();
-    void initRoom(ENetEvent *event);
-    void worldState(ENetEvent *event);
-    void playerUpdate(ENetEvent *event);
-    void playerFire(ENetEvent *event);
-    void airplaneDrop(ENetEvent *event);
-    void playerLand(ENetEvent *event);
-    void ringDeath(ENetEvent *event);
-    void playerDead(ENetEvent *event);
-    void syncProjectile(ENetEvent *event);
-    void curseCleanse(ENetEvent *event);
-    void respawnTeammate(ENetEvent *event);
-    void clickInteract(ENetEvent *event);
-    void healthState(ENetEvent *event);
-    void chatMessage(ENetEvent *event);
-    void throwChatMessage(ENetEvent *event);
-    void reviveState(ENetEvent *event);
-    void markerChange(ENetEvent *event);
+    ResponseFunction initRoom;
+    ResponseFunction worldState;
+    ResponseFunction playerUpdate;
+    ResponseFunction playerFire;
+    ResponseFunction airplaneDrop;
+    ResponseFunction playerLand;
+    ResponseFunction ringDeath;
+    ResponseFunction playerDead;
+    ResponseFunction syncProjectile;
+    ResponseFunction curseCleanse;
+    ResponseFunction respawnTeammate;
+    ResponseFunction clickInteract;
+    ResponseFunction healthState;
+    ResponseFunction chatMessage;
+    ResponseFunction throwChatMessage;
+    ResponseFunction reviveState;
+    ResponseFunction markerChange;
+    ResponseFunction weaponPickup;
 };
 
 #endif

@@ -10,6 +10,6 @@
 
 const std::string genUUID();
 bool floatsAreEqual(float a, float b);
-Vector2u8 getChankByPosition(Vector3f &position);
+Vector2u8 getChankIndexByPosition(Vector3f &position);
 
 #endif

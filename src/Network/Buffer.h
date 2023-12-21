@@ -14,18 +14,19 @@
 class Buffer
 {
 private:
-    bool mem_to_delete;
+    bool is_allocated;
     size_t size;
     uint8_t *data;
     uint8_t *pos;
 
 public:
     Buffer(uint8_t *data, size_t size);
-    Buffer(size_t size = 256);
+    Buffer(size_t size);
+    Buffer(ClientEventCode code, size_t size);
     ~Buffer();
     void moveForward(size_t bytes);
     void moveBackward(size_t bytes);
-    void finish(uint8_t byte = uint8_t(0));
+    void finilize(uint8_t byte = uint8_t(0));
     size_t getSize();
     size_t getUsedSize();
     size_t getRemainSize();
@@ -95,11 +96,11 @@ public:
         write(static_cast<uint8_t>(data));
     }
 
-    template <typename T>
+    template <typename T, typename U = uint32_t>
         requires IsString<T>
     void write(const std::string &data)
     {
-        uint32_t length = data.size();
+        U length = data.size();
         memcpy(pos, &length, sizeof(length));
         pos += sizeof(length);
         memcpy(pos, data.c_str(), length);

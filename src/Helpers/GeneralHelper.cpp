@@ -3,8 +3,7 @@
 #include <random>
 #include <sstream>
 
-#include "Game.h"
-#include "Chunk.h"
+#include "Constants.h"
 
 const std::string genUUID()
 {
@@ -50,8 +49,8 @@ bool floatsAreEqual(float a, float b)
     return (std::fabs(a - b) <= std::numeric_limits<float>::epsilon() * std::fmax(std::fabs(a), std::fabs(b)));
 }
 
-Vector2u8 getChankByPosition(Vector3f &position)
+Vector2u8 getChankIndexByPosition(Vector3f &position)
 {
     return {
-        static_cast<uint8_t>(static_cast<uint32_t>(position.x + WORLD_SIZE.x / 2) / CHUNK_SIZE.x), static_cast<uint8_t>(static_cast<uint32_t>(position.z + WORLD_SIZE.y / 2) / CHUNK_SIZE.y)};
+        static_cast<uint8_t>(static_cast<uint32_t>(position.x + WORLD_SIZE.x / 2) / CHUNK_SIZE), static_cast<uint8_t>(static_cast<uint32_t>(position.z + WORLD_SIZE.y / 2) / CHUNK_SIZE)};
 }

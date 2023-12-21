@@ -11,11 +11,11 @@
 
 Started::Started(/* args */) : current_ring_index(0)
 {
-    ring_spawn_delay = std::chrono::duration<float>(Config::getValue("ring_spawn_delay", 1000, "Game"));
-    ring_base_time = std::chrono::duration<float>(Config::getValue("ring_base_time", 1000, "Game"));
-    number_of_rings = Config::getValue("number_of_rings", 4, "Game");
-    first_ring_size = Config::getValue("first_ring_size", 2048, "Game");
-    last_ring_size = Config::getValue("last_ring_size", 256, "Game");
+    ring_spawn_delay = std::chrono::duration<float>(Config::getValue("ring_spawn_delay", 70, "Game"));
+    ring_base_time = std::chrono::duration<float>(Config::getValue("ring_base_time", 200, "Game"));
+    number_of_rings = Config::getValue("number_of_rings", 6, "Game");
+    first_ring_size = Config::getValue("first_ring_size", 4240, "Game");
+    last_ring_size = Config::getValue("last_ring_size", 140, "Game");
 
     if (number_of_rings < 2)
         number_of_rings = 2;
@@ -53,7 +53,7 @@ void Started::initialize()
     current_ring_index = 0;
     current_ring = &rings.at(current_ring_index);
     current_ring->data_type = RingDataType::NextRingData;
-    server->network->packet_handler.doRequest(ClientEventCode::RingUpdate, current_ring);
+    server->network->sendBroadcast(ClientEventCode::RingUpdate, current_ring);
     ring_timer.restart();
 }
 
@@ -62,29 +62,29 @@ GameState Started::process()
     current_ring->progress = 100 * ring_timer.get() / current_ring->travel_time;
     if (ring_timer.passed<std::chrono::seconds>())
         Logger::log->debug("Rings phase: Ring {}, progress {}", current_ring_index, current_ring->progress);
-
-    if (ring_timer.get() >= current_ring->travel_time)
-    {
-        if (current_ring_index == number_of_rings - 1)
+    /*
+        if (ring_timer.get() >= current_ring->travel_time)
         {
+            if (current_ring_index == number_of_rings - 1)
+            {
 
-            // return GameState::Ended;
+                // return GameState::Ended;
+            }
+            else
+            {
+                current_ring_index++;
+                current_ring = &rings.at(current_ring_index);
+                current_ring->data_type = RingDataType::NextRingData;
+                server->network->packet_handler.doRequest(ClientEventCode::RingUpdate, current_ring);
+                current_ring->data_type = RingDataType::StartMove;
+                server->network->packet_handler.doRequest(ClientEventCode::RingUpdate, current_ring);
+                ring_timer.restart();
+            }
         }
         else
         {
-            current_ring_index++;
-            current_ring = &rings.at(current_ring_index);
-            current_ring->data_type = RingDataType::NextRingData;
+            current_ring->data_type = RingDataType::FlyingTime;
             server->network->packet_handler.doRequest(ClientEventCode::RingUpdate, current_ring);
-            current_ring->data_type = RingDataType::StartMove;
-            server->network->packet_handler.doRequest(ClientEventCode::RingUpdate, current_ring);
-            ring_timer.restart();
-        }
-    }
-    else
-    {
-        current_ring->data_type = RingDataType::FlyingTime;
-        server->network->packet_handler.doRequest(ClientEventCode::RingUpdate, current_ring);
-    }
+        }*/
     return GameState::Started;
 }
