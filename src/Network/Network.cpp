@@ -1,5 +1,6 @@
 #include "Network.h"
 
+#include <iostream>
 #include <chrono>
 #include <string>
 #include <arpa/inet.h>
@@ -133,8 +134,14 @@ void Network::threadGetEvents(std::shared_ptr<Server> &server, ENetHost *host, s
     {
         ENetEvent *event = new ENetEvent();
         if (enet_host_check_events(host, event) <= 0)
+        {
             if (enet_host_service(host, event, std::ceil(poll_time_ratio * 1000 / server->preferences->tick_rate)) <= 0)
+            {
+                delete event;
                 continue;
+            }
+            events.push(event);
+        }
         events.push(event);
     }
     Logger::log->info("Network thread stopped");
@@ -195,6 +202,7 @@ void Network::process()
             handleResponce(event);
             break;
         }
+        std::cout << "Delete event: " << event << std::endl;
         delete event;
     }
 

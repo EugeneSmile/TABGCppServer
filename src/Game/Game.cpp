@@ -23,6 +23,8 @@ Game::Game(/* args */)
 
     spawn_loot_on_start = Config::getValue("spawn_loot_on_start", false, "Game");
     player_distance_limit = Config::getValue("player_distance_limit", 1024, "Game");
+
+    experimental_init();
 }
 
 void Game::changeState(GameState state, bool force)
@@ -73,4 +75,27 @@ void Game::keepPlayersInBounds()
     }
     if (!players_to_teleport.empty())
         server->network->sendBroadcast(ClientEventCode::PlayerRespawn, static_cast<void *>(&players_to_teleport));
+}
+
+void Game::experimental_init()
+{
+
+    /*     for (size_t i = 0; i < 9; i++)
+        {
+            createMaBoi();
+        }
+    */
+    uint32_t weapon_id = 0;
+    for (int32_t i = -WORLD_SIZE.x / 4; i < WORLD_SIZE.x / 4; i += 16)
+    {
+        for (uint32_t j = -WORLD_SIZE.y / 4; j < WORLD_SIZE.y / 4; j += 16)
+        {
+            weapons->addWeapon(weapon_id, 1, {static_cast<float>(i), 140, static_cast<float>(j)});
+            weapon_id < 329 ? weapon_id++ : weapon_id = 0;
+        }
+    }
+    /*
+            game->cars->addCar(3, 0, {-15, 112, 5});
+            game->cars->addCar(4, 3, {-30, 112, 5});
+            game->cars->addCar(3, 7, {-45, 112, 5}); */
 }

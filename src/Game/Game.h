@@ -28,6 +28,7 @@ class Game : public ServerPtr
 {
 private:
     void keepPlayersInBounds();
+    void experimental_init();
 
 public:
     std::shared_ptr<Players> players;

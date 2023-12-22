@@ -27,8 +27,6 @@ void Server::init()
 #endif
 
     Logger::log->set_level(static_cast<spdlog::level::level_enum>(Config::getValue("level", 2, "Log")));
-
-    experimental_init();
 }
 
 void Server::deinit()
@@ -96,25 +94,4 @@ void Server::createMaBoi()
     maboi_data.gear = std::vector<uint32_t>(12, 0);
     auto player = game->players->addPlayer(std::move(maboi_data), true);
     (*player)->game.position = {dis2(gen), 115, dis2(gen)};
-}
-
-void Server::experimental_init()
-{
-
-    /*     for (size_t i = 0; i < 9; i++)
-        {
-            createMaBoi();
-        }
-
-        for (uint32_t i = 0; i < 10; i++)
-        {
-            for (uint32_t j = 0; j < 34; j++)
-            {
-                game->weapons->addWeapon(i * 34 + j, 1, {static_cast<float>(i) - 20, 111.5, static_cast<float>(j) - 56});
-            }
-        }
-
-        game->cars->addCar(3, 0, {-15, 112, 5});
-        game->cars->addCar(4, 3, {-30, 112, 5});
-        game->cars->addCar(3, 7, {-45, 112, 5}); */
 }

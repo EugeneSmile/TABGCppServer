@@ -31,7 +31,6 @@ public:
 #endif
     std::chrono::nanoseconds tick_duration;
     std::chrono::high_resolution_clock::time_point timepoint_start;
-    void experimental_init();
 
     Server() = default;
     [[nodiscard]] static std::shared_ptr<Server> create();
