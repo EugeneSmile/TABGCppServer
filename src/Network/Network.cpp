@@ -1,6 +1,5 @@
 #include "Network.h"
 
-#include <iostream>
 #include <chrono>
 #include <string>
 #include <arpa/inet.h>
@@ -140,7 +139,6 @@ void Network::threadGetEvents(std::shared_ptr<Server> &server, ENetHost *host, s
                 delete event;
                 continue;
             }
-            events.push(event);
         }
         events.push(event);
     }
@@ -202,7 +200,6 @@ void Network::process()
             handleResponce(event);
             break;
         }
-        std::cout << "Delete event: " << event << std::endl;
         delete event;
     }
 
